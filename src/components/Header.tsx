@@ -5,9 +5,9 @@ const Header: React.FC = () => {
     <header className="flex items-center justify-between px-6 md:px-20 py-6">
       <div className="flex items-center gap-3 cursor-pointer">
         <img
-          src="/logo/3.png"
-          alt="연희스튜디오"
-          className="h-12 w-auto object-contain hover:scale-105 transition-transform"
+          src="/logo/1.png"
+          alt="Studio Yeonhee"
+          className="h-10 w-auto object-contain hover:scale-105 transition-transform"
         />
       </div>
 

@@ -6,9 +6,9 @@ const Footer: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-center gap-10">
         <div className="flex items-center gap-4">
           <img
-            src="/logo/6.png"
-            alt="연희스튜디오"
-            className="h-10 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
+            src="/logo/1.png"
+            alt="Yeonhui Studio"
+            className="h-8 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
           />
         </div>
 
