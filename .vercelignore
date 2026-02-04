@@ -1,0 +1,9 @@
+docs
+temp
+.cache_media
+.data
+*.backup
+*.final.txt
+test_notebooklm.js
+check_api.js
+gcp-key.json
