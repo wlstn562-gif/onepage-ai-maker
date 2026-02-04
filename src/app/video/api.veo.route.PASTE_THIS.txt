@@ -1,0 +1,114 @@
+// ✅ /src/app/api/veo/route.ts
+// "Error: VEO response missing videoUrl/url" 해결용
+//
+// 사용법:
+//   const raw = <네가 Veo 호출로 받은 JSON>;
+//   const out = normalizeVeoResponse(raw);
+//   return NextResponse.json(out);
+
+type AnyObj = Record<string, any>;
+
+function getPath(obj: any, path: string): any {
+  const parts = path.split(".");
+  let cur: any = obj;
+  for (const p of parts) {
+    if (cur == null) return undefined;
+    const idx = Number(p);
+    if (!Number.isNaN(idx) && String(idx) === p) {
+      cur = cur[idx];
+    } else {
+      cur = cur[p];
+    }
+  }
+  return cur;
+}
+
+function firstNonEmptyString(obj: any, paths: string[]): string | null {
+  for (const path of paths) {
+    const v = getPath(obj, path);
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return null;
+}
+
+export function normalizeVeoResponse(raw: any) {
+  const data: any = raw;
+
+  // 1) URL 후보들
+  const url = firstNonEmptyString(data, [
+    "videoUrl",
+    "url",
+    "videoURL",
+    "video_url",
+    "video.uri",
+    "video.url",
+    "output.0.url",
+    "output.0.uri",
+    "outputs.0.url",
+    "outputs.0.uri",
+    "predictions.0.url",
+    "predictions.0.uri",
+    "predictions.0.output.url",
+    "predictions.0.output.uri",
+    "result.url",
+    "result.uri",
+    "response.url",
+    "response.uri",
+  ]);
+
+  // 2) base64 후보들 (mp4 bytes 등)
+  const base64 = firstNonEmptyString(data, [
+    "videoDataBase64",
+    "videoBytes",
+    "videoBytesBase64",
+    "video_base64",
+    "video.base64",
+    "video.data",
+    "output.0.base64",
+    "output.0.data",
+    "outputs.0.base64",
+    "outputs.0.data",
+    "predictions.0.videoBytes",
+    "predictions.0.video_base64",
+    "predictions.0.video",
+  ]);
+
+  // 3) mime 후보들
+  const mimeType =
+    firstNonEmptyString(data, [
+      "mimeType",
+      "contentType",
+      "video.mimeType",
+      "video.contentType",
+      "output.0.mimeType",
+      "outputs.0.mimeType",
+      "predictions.0.mimeType",
+    ]) || "video/mp4";
+
+  // 4) 최종: data URL 생성
+  let videoDataUrl: string | null = null;
+  if (base64) {
+    videoDataUrl = base64.startsWith("data:")
+      ? base64
+      : `data:${mimeType};base64,${base64}`;
+  }
+
+  // 5) 최종 URL 결정 (프론트 호환: videoUrl/url 둘 다 내려줌)
+  const finalUrl = (url && url.trim()) || videoDataUrl;
+
+  return {
+    // ✅ 프론트가 찾는 키들
+    videoUrl: finalUrl,
+    url: finalUrl,
+
+    // ✅ 디버깅/호환용
+    videoDataUrl,
+    mimeType,
+
+    // 원본 일부도 남겨두면 나중에 모델 바뀌어도 추적 쉬움
+    _rawHas: {
+      hadUrl: !!url,
+      hadBase64: !!base64,
+    },
+  };
+}

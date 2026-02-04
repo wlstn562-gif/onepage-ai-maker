@@ -1,0 +1,229 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* YEONHUI STUDIO BRAND COLORS */
+    --vibrant-yellow: #FFD43B;
+    --premium-gold: #FFC107;
+    --pure-white: #FFFFFF;
+    --soft-gray: #F8F9FA;
+    --deep-black: #0A0A0A;
+    --muted-gray: #6B7280;
+    --muted: #6B7280;
+    --line: rgba(0, 0, 0, 0.1);
+
+    /* Accent Colors (Playful) */
+    --accent-pink: #FF6B6B;
+    --accent-blue: #4DABF7;
+    --accent-green: #51CF66;
+    --accent-purple: #BE4BDB;
+
+    /* Layout Variables */
+    --container: 1180px;
+
+    /* Semantic Mappings */
+    --bg: var(--vibrant-yellow);
+    --text: var(--deep-black);
+    --gold: var(--premium-gold);
+    --primary: var(--premium-gold);
+
+    /* Shadows */
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --shadow-card: 0 20px 50px rgba(0, 0, 0, 0.1);
+
+    /* 3D Shadows */
+    --shadow-3d-black: 0 6px 0 0 #000000;
+    --shadow-3d-black-sm: 0 3px 0 0 #000000;
+    --shadow-3d-pink: 0 8px 0 0 #E03131;
+    --shadow-3d-pink-sm: 0 4px 0 0 #E03131;
+    --shadow-3d-blue: 0 6px 0 0 #1971C2;
+    --shadow-3d-green: 0 6px 0 0 #2F9E44;
+    --shadow-3d-purple: 0 6px 0 0 #862E9C;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: #FFD43B;
+    /* background-vibrant */
+    color: #181610;
+    font-family: 'Plus Jakarta Sans', 'Pretendard', system-ui, -apple-system, sans-serif;
+    font-size: 18px;
+    line-height: 1.6;
+    font-weight: 500;
+    margin: 0;
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background-color: var(--accent-pink);
+    color: white;
+  }
+
+  /* Material Symbols */
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    display: inline-block;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  h1 {
+    font-size: 48px;
+    line-height: 1.1;
+  }
+
+  @media (min-width: 768px) {
+    h1 {
+      font-size: 64px;
+    }
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .layout-container {
+    width: 100%;
+    max-width: 1440px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+@layer components {
+
+  /* 3D Button - Primary (Black) */
+  .btn-3d {
+    @apply bg-black text-white font-black px-10 py-5 rounded-3xl transition-all;
+    box-shadow: var(--shadow-3d-black);
+  }
+
+  .btn-3d:hover {
+    @apply translate-y-[3px];
+    box-shadow: var(--shadow-3d-black-sm);
+  }
+
+  .btn-3d:active {
+    @apply translate-y-[6px];
+    box-shadow: none;
+  }
+
+  /* 3D Button - Pink (CTA) */
+  .btn-3d-pink {
+    @apply bg-[var(--accent-pink)] text-white font-black px-10 py-5 rounded-3xl transition-all;
+    box-shadow: var(--shadow-3d-pink);
+  }
+
+  .btn-3d-pink:hover {
+    @apply translate-y-[4px];
+    box-shadow: var(--shadow-3d-pink-sm);
+  }
+
+  .btn-3d-pink:active {
+    @apply translate-y-[8px];
+    box-shadow: none;
+  }
+
+  /* Outline Button with 3D effect */
+  .btn-outline-3d {
+    @apply bg-white text-black border-4 border-black font-black px-10 py-5 rounded-3xl transition-all;
+    box-shadow: var(--shadow-3d-black);
+  }
+
+  .btn-outline-3d:hover {
+    @apply translate-y-[2px];
+    box-shadow: 0 4px 0 0 #000;
+  }
+
+  .btn-outline-3d:active {
+    @apply translate-y-[4px];
+    box-shadow: none;
+  }
+
+  /* Card Styles */
+  .card-playful {
+    @apply bg-white p-8 rounded-[32px] shadow-xl transition-transform;
+  }
+
+  .card-playful:hover {
+    @apply -translate-y-2;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in-up {
+    animation: fadeInUp 0.8s ease-out forwards;
+    opacity: 0;
+  }
+
+  .animate-bounce-slow {
+    animation: bounceSlow 3s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes bounceSlow {
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  @keyframes float {
+
+    0%,
+    100% {
+      transform: translateY(0) rotate(12deg);
+    }
+
+    50% {
+      transform: translateY(-15px) rotate(12deg);
+    }
+  }
+}

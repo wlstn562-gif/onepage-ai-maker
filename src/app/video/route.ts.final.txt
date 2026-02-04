@@ -1,0 +1,558 @@
+// src/app/api/render/route.ts
+// ✅ Hook: 짧은 영상은 "루프"로 채움(마지막 프리즈 제거)
+// ✅ 자막: ko1~ko4 "동시 표시"(멀티라인)로 싱크 이슈 최소화
+// ✅ Hook BGM 믹스(볼륨/덕킹/페이드) 지원
+import { NextResponse } from "next/server";
+import fs from "fs/promises";
+import path from "path";
+import os from "os";
+import { spawn } from "child_process";
+
+export const runtime = "nodejs";
+
+// page.tsx 의 <break time="...s" /> 와 동일하게 맞춰야 함
+const BREAK_SEC = 0.45;
+
+type Scene = {
+  kind?: "hook" | "body";
+  ko1?: string;
+  ko2?: string;
+  ko3?: string;
+  ko4?: string;
+  promptEn?: string;
+
+  videoUrl?: string;
+  imageUrl?: string;
+  audioUrl: string;
+  durationSec?: number;
+};
+
+type Settings = {
+  fps?: number;
+  aspectRatio?: "16:9" | "9:16";
+  includeSubtitle?: boolean;
+
+  logoUrl?: string;
+  logoWidthPx?: number;
+  logoMarginPx?: number;
+
+  zoomEnabled?: boolean;
+  zoomSpeed?: number;
+  zoomMax?: number;
+
+  // ✅ BGM (hook only)
+  hookBgmUrl?: string;      // ex) "/api/file/xxx" or "http..."
+  hookBgmGainDb?: number;   // ex) -18 (기본)
+  hookBgmFadeSec?: number;  // ex) 0.7 (기본)
+  hookDuckDb?: number;      // ex) -10 (TTS 나올 때 BGM 줄이기, 기본)
+};
+
+type Project = {
+  scenes: Scene[];
+  settings?: Settings;
+};
+
+function dataUrlToBuffer(dataUrl: string): Buffer {
+  const comma = dataUrl.indexOf(",");
+  if (comma < 0) throw new Error("dataUrl 콤마(,) 없음");
+  const meta = dataUrl.slice(0, comma);
+  if (!meta.includes(";base64")) throw new Error("base64 아님");
+  return Buffer.from(dataUrl.slice(comma + 1), "base64");
+}
+
+async function fetchToBuffer(url: string): Promise<Buffer> {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`fetch 실패(${r.status})`);
+  return Buffer.from(await r.arrayBuffer());
+}
+
+function resolveUrl(reqUrl: string, maybeRel: string) {
+  if (maybeRel.startsWith("http://") || maybeRel.startsWith("https://")) return maybeRel;
+  return new URL(maybeRel, reqUrl).toString();
+}
+
+function run(cmd: string, args: string[]) {
+  return new Promise<void>((res, rej) => {
+    const p = spawn(cmd, args, { stdio: ["ignore", "ignore", "pipe"] });
+    let err = "";
+    p.stderr.on("data", (d) => (err += d.toString()));
+    p.on("error", rej);
+    p.on("close", (code) => (code === 0 ? res() : rej(new Error(err || `${cmd} 실패(${code})`))));
+  });
+}
+
+async function ffprobeDur(filePath: string): Promise<number> {
+  return new Promise((res) => {
+    const p = spawn("ffprobe", [
+      "-v",
+      "error",
+      "-show_entries",
+      "format=duration",
+      "-of",
+      "default=noprint_wrappers=1:nokey=1",
+      filePath,
+    ]);
+    let out = "";
+    p.stdout.on("data", (d) => (out += d.toString()));
+    p.on("close", () => res(Number(out.trim()) || 0));
+    p.on("error", () => res(0));
+  });
+}
+
+function isVideo(v: string) {
+  return v?.startsWith("data:video/") || v?.startsWith("/api/file") || v?.startsWith("http");
+}
+function isAudio(a: string) {
+  return a?.startsWith("data:audio/") || a?.startsWith("/api/file") || a?.startsWith("http");
+}
+function isImage(u: string) {
+  return u?.startsWith("data:image/") || u?.startsWith("/api/file") || u?.startsWith("http");
+}
+
+function escapeDrawtext(s: string) {
+  // drawtext text= 에 넣을 문자열 이스케이프
+  // 실제 개행(\n)은 ffmpeg drawtext에서 줄바꿈으로 해석되도록 \n(두 글자)로 변환한다.
+  const normalized = (s ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  return normalized
+    // 백슬래시 먼저 이스케이프 (개행을 \n로 바꾸기 전에)
+    .replace(/\\/g, "\\\\")
+    // drawtext/ffmpeg에서 특별하게 처리될 수 있는 문자 이스케이프
+    .replace(/:/g, "\\:")
+    .replace(/%/g, "\\%")
+    .replace(/'/g, "\\'")
+    // 실제 개행 -> \n (두 글자)
+    .replace(/\n/g, "\\n");
+}
+
+// Windows 폰트 경로(C:\\...)에서 ':' 때문에 drawtext 파싱이 깨짐 → '\\:' 로 이스케이프
+function escapeFontfileForDrawtext(p: string) {
+  const normalized = p.replace(/\\/g, "/");
+  return normalized.replace(":", "\\:");
+}
+
+async function pickFontPath(): Promise<string> {
+  const candidates = [
+    path.join(process.cwd(), "public", "fonts", "NanumGothicBold.ttf"),
+    path.join(process.cwd(), "public", "fonts", "NanumGothic.ttf"),
+    "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
+    "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+    "C:/Windows/Fonts/malgun.ttf",
+    "C:/Windows/Fonts/malgunbd.ttf",
+    "C:/Windows/Fonts/gulim.ttc",
+  ];
+  for (const p of candidates) {
+    try {
+      await fs.access(p);
+      return p;
+    } catch { }
+  }
+  return "";
+}
+
+// ✅ 훅: 짧은 영상이면 "루프", 바디: 마지막 프레임 clone
+async function normalizeVideoToTarget(
+  inPath: string,
+  outPath: string,
+  targetSec: number,
+  outW: number,
+  outH: number,
+  fps: number,
+  mode: "clone" | "loop" = "clone"
+) {
+  const vfBase = `scale=${outW}:${outH}:force_original_aspect_ratio=increase,crop=${outW}:${outH},fps=${fps},format=yuv420p`;
+
+  if (mode === "loop") {
+    await run("ffmpeg", [
+      "-y",
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-stream_loop",
+      "-1",
+      "-i",
+      inPath,
+      "-t",
+      String(targetSec),
+      "-vf",
+      vfBase,
+      "-an",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "20",
+      "-movflags",
+      "+faststart",
+      outPath,
+    ]);
+    return;
+  }
+
+  const vDur = await ffprobeDur(inPath);
+  const padSec = Math.max(0, targetSec - vDur);
+  const vf = padSec > 0.05 ? `${vfBase},tpad=stop_mode=clone:stop_duration=${padSec.toFixed(3)}` : vfBase;
+
+  await run("ffmpeg", [
+    "-y",
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-i",
+    inPath,
+    "-t",
+    String(targetSec),
+    "-vf",
+    vf,
+    "-an",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-crf",
+    "20",
+    "-movflags",
+    "+faststart",
+    outPath,
+  ]);
+}
+
+// ✅ BGM 믹스(덕킹 + 페이드)
+function buildAudioMixFilters(params: {
+  hasBgm: boolean;
+  targetSec: number;
+  bgmGainDb: number;
+  duckDb: number;
+  fadeSec: number;
+  /** ffmpeg input index for TTS audio (e.g. 1 when inputs are: 0=video,1=tts,...) */
+  ttsInputIndex: number;
+  /** ffmpeg input index for BGM audio (e.g. 2 or 3 depending on whether logo input exists) */
+  bgmInputIndex?: number;
+}) {
+  const { hasBgm, targetSec, bgmGainDb, duckDb, fadeSec, ttsInputIndex, bgmInputIndex } = params;
+  const stOut = Math.max(0, targetSec - fadeSec);
+
+  if (!hasBgm) {
+    // TTS만 (끝 페이드만)
+    return {
+      filter: `[${ttsInputIndex}:a]aresample=async=1:first_pts=0,afade=t=out:st=${stOut.toFixed(3)}:d=${fadeSec.toFixed(3)}[aout]`,
+      map: "[aout]",
+    };
+  }
+
+  // inputs:
+  // [ttsInputIndex:a] = TTS
+  // [bgmInputIndex:a] = BGM
+  const bgmIdx = typeof bgmInputIndex === "number" ? bgmInputIndex : 2;
+  const bgm =
+    `[${bgmIdx}:a]aloop=loop=-1:size=2e+09,atrim=0:${targetSec.toFixed(3)}` +
+    `,volume=${bgmGainDb}dB` +
+    `,afade=t=in:st=0:d=${fadeSec.toFixed(3)}` +
+    `,afade=t=out:st=${stOut.toFixed(3)}:d=${fadeSec.toFixed(3)}[bgm]`;
+
+  const tts =
+    `[${ttsInputIndex}:a]aresample=async=1:first_pts=0` +
+    `,afade=t=out:st=${stOut.toFixed(3)}:d=${fadeSec.toFixed(3)}[tts]`;
+
+  // 덕킹: TTS 나올 때 BGM 감소
+  // ⚠️ 같은 라벨([tts])을 두 번 쓰면(ffmpeg는 1회 소비) "matches no streams" 에러가 납니다.
+  // 그래서 TTS를 2갈래로 split 해서(사이드체인용/믹스용) 각각 사용합니다.
+  const ttsSplit = `[tts]asplit=2[tts_sc][tts_mix]`;
+
+  // duckDb는 "덕킹 강도"로 해석(값이 커질수록 더 강하게)
+  const ratio = Math.min(20, Math.max(2, 1 + Math.abs(duckDb)));
+  const duck = `[bgm][tts_sc]sidechaincompress=threshold=0.02:ratio=${ratio}:attack=20:release=250:makeup=1[bgmduck]`;
+
+  // amix는 bgmduck + tts_mix
+  const mix = `[bgmduck][tts_mix]amix=inputs=2:duration=first:dropout_transition=0[aout]`;
+
+  return { filter: [bgm, tts, ttsSplit, duck, mix].join(";"), map: "[aout]" };
+
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = (await req.json().catch(() => ({}))) as any;
+    const project: Project = body?.scenes ? body : body?.project ? body.project : body;
+
+    const scenes = Array.isArray(project?.scenes) ? project.scenes : [];
+    const st = (project?.settings || {}) as Settings;
+
+    // ✅ 빈 훅/빈 씬 제거(텍스트/미디어/프롬프트 아무것도 없으면 제거)
+    const scenesFiltered = scenes.filter((s: any) => {
+      const t1 = String(s?.ko1 || "").trim();
+      const t2 = String(s?.ko2 || "").trim();
+      const t3 = String(s?.ko3 || "").trim();
+      const t4 = String(s?.ko4 || "").trim();
+      const hasText = !!(t1 || t2 || t3 || t4);
+      const hasMedia = !!(s?.videoUrl || s?.imageUrl || s?.audioUrl);
+      const hasPrompt = !!String(s?.promptEn || "").trim();
+      return hasText || hasMedia || hasPrompt;
+    });
+
+    if (!scenesFiltered.length) return NextResponse.json({ error: "장면 없음" }, { status: 400 });
+
+    const fps = Math.max(1, Number(st.fps || 30));
+    const aspectRatio = st.aspectRatio === "9:16" ? "9:16" : "16:9";
+    const OUT_W = aspectRatio === "9:16" ? 1080 : 1920;
+    const OUT_H = aspectRatio === "9:16" ? 1920 : 1080;
+    const includeSubtitle = st.includeSubtitle !== false;
+
+    const logoWidthPx = Math.max(16, Number(st.logoWidthPx || 180));
+    const logoMarginPx = Math.max(0, Number(st.logoMarginPx || 24));
+
+    const zoomEnabled = st.zoomEnabled !== false;
+    const zoomSpeed = Number(st.zoomSpeed || 0.0008);
+    const zoomMax = Number(st.zoomMax || 1.20);
+
+    // ✅ Hook BGM 설정
+    const hookBgmUrl = String(st.hookBgmUrl || "").trim();
+    const hookBgmGainDb = Number.isFinite(Number(st.hookBgmGainDb)) ? Number(st.hookBgmGainDb) : -18;
+    const hookDuckDb = Number.isFinite(Number(st.hookDuckDb)) ? Number(st.hookDuckDb) : -10;
+    const hookBgmFadeSec = Number.isFinite(Number(st.hookBgmFadeSec)) ? Number(st.hookBgmFadeSec) : 0.7;
+
+    const workDir = await fs.mkdtemp(path.join(os.tmpdir(), "render-"));
+    const outDir = path.join(workDir, "out");
+    await fs.mkdir(outDir, { recursive: true });
+
+    // 로고
+    let logoPath = "";
+    const logoUrl = String(st.logoUrl || "").trim();
+    if (logoUrl && isImage(logoUrl)) {
+      logoPath = path.join(workDir, "logo.png");
+      if (logoUrl.startsWith("data:image/")) await fs.writeFile(logoPath, dataUrlToBuffer(logoUrl));
+      else await fs.writeFile(logoPath, await fetchToBuffer(resolveUrl(req.url, logoUrl)));
+    }
+
+    // 폰트
+    const fontPathRaw = await pickFontPath();
+    const useFont = includeSubtitle && Boolean(fontPathRaw);
+    const fontPath = useFont ? escapeFontfileForDrawtext(fontPathRaw) : "";
+
+    // hookBgm 파일 로드(있으면)
+    let bgmPath = "";
+    if (hookBgmUrl && isAudio(hookBgmUrl)) {
+      bgmPath = path.join(workDir, "hook_bgm.mp3");
+      if (hookBgmUrl.startsWith("data:audio/")) await fs.writeFile(bgmPath, dataUrlToBuffer(hookBgmUrl));
+      else await fs.writeFile(bgmPath, await fetchToBuffer(resolveUrl(req.url, hookBgmUrl)));
+    }
+
+    const clipPaths: string[] = [];
+
+    for (let i = 0; i < scenesFiltered.length; i++) {
+      const s = scenesFiltered[i];
+      const kind: "hook" | "body" = s?.kind === "hook" ? "hook" : "body";
+
+      // 오디오 (TTS)
+      const a = String(s?.audioUrl || "");
+      if (!a || !isAudio(a)) throw new Error(`오디오 없음: ${i + 1}`);
+      const aPath = path.join(workDir, `a_${i}.mp3`);
+      if (a.startsWith("data:audio/")) await fs.writeFile(aPath, dataUrlToBuffer(a));
+      else await fs.writeFile(aPath, await fetchToBuffer(resolveUrl(req.url, a)));
+
+      const aDur = await ffprobeDur(aPath);
+      const durHint = Number(s?.durationSec || 0);
+
+      // hook: 오디오 길이 기준(짧게)
+      // body: 오디오 우선 + 힌트가 더 길면 따라감
+      const target =
+        kind === "hook"
+          ? Math.max(0.5, aDur + 0.12)
+          : Math.max(Math.max(0.5, aDur + BREAK_SEC), durHint || 0);
+
+      // 비디오/이미지 준비
+      const v = String(s?.videoUrl || "");
+      const img = String(s?.imageUrl || "");
+
+      let vRawPath = path.join(workDir, `vraw_${i}.mp4`);
+
+      if (v && isVideo(v)) {
+        if (v.startsWith("data:video/")) await fs.writeFile(vRawPath, dataUrlToBuffer(v));
+        else await fs.writeFile(vRawPath, await fetchToBuffer(resolveUrl(req.url, v)));
+      } else if (img && isImage(img)) {
+        const imgPath = path.join(workDir, `img_${i}.png`);
+        if (img.startsWith("data:image/")) await fs.writeFile(imgPath, dataUrlToBuffer(img));
+        else await fs.writeFile(imgPath, await fetchToBuffer(resolveUrl(req.url, img)));
+
+        const zFrames = Math.max(1, Math.round(target * fps));
+        const scalePad = `scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=increase,crop=${OUT_W}:${OUT_H}`;
+
+        const zoom = zoomEnabled
+          ? `,zoompan=z='min(zoom+${zoomSpeed.toFixed(6)},${zoomMax.toFixed(2)})':d=${zFrames}:s=${OUT_W}x${OUT_H}`
+          : "";
+
+        await run("ffmpeg", [
+          "-y",
+          "-hide_banner",
+          "-loglevel",
+          "error",
+          "-loop",
+          "1",
+          "-i",
+          imgPath,
+          "-t",
+          String(target),
+          "-r",
+          String(fps),
+          "-vf",
+          scalePad + zoom + ",format=yuv420p",
+          "-an",
+          "-c:v",
+          "libx264",
+          "-preset",
+          "veryfast",
+          "-crf",
+          "20",
+          "-movflags",
+          "+faststart",
+          vRawPath,
+        ]);
+      } else {
+        throw new Error(`영상/이미지 없음: ${i + 1}`);
+      }
+
+      // ✅ hook은 loop, body는 clone
+      const vNormPath = path.join(workDir, `vnorm_${i}.mp4`);
+      await normalizeVideoToTarget(
+        vRawPath,
+        vNormPath,
+        target,
+        OUT_W,
+        OUT_H,
+        fps,
+        kind === "hook" ? "loop" : "clone"
+      );
+
+      // 클립 합성
+      const clipPath = path.join(outDir, `clip_${i}.mp4`);
+
+      // inputs:
+      // 0 = video
+      // 1 = tts audio
+      // 2 = logo (optional)
+      // 3 = bgm audio (optional, hook only)
+      const args: string[] = ["-y", "-hide_banner", "-loglevel", "error", "-i", vNormPath, "-i", aPath];
+      let hasLogo = false;
+      let hasBgm = false;
+
+      if (logoPath) {
+        args.push("-i", logoPath);
+        hasLogo = true;
+      }
+
+      if (kind === "hook" && bgmPath) {
+        args.push("-i", bgmPath);
+        hasBgm = true;
+      }
+
+      const filters: string[] = [];
+      filters.push(`[0:v]format=yuv420p[v0]`);
+
+      // 로고 overlay
+      if (hasLogo) {
+        filters.push(`[2:v]scale=${logoWidthPx}:-1[lg]`);
+        filters.push(`[v0][lg]overlay=${logoMarginPx}:${logoMarginPx}[v1]`);
+      } else {
+        filters.push(`[v0]copy[v1]`);
+      }
+
+      // ✅ 자막(ko1~ko4 동시 표시)
+      if (useFont) {
+        const lines = [s?.ko1, s?.ko2, s?.ko3, s?.ko4]
+          .map((x) => String(x || "").trim())
+          .filter(Boolean)
+          .map(escapeDrawtext);
+
+        if (lines.length) {
+          const multi = lines.join("\\\\n");
+          const txtBase =
+            `fontfile='${fontPath}'` +
+            `:fontsize=52:fontcolor=white:borderw=3:bordercolor=black` +
+            `:box=1:boxcolor=black@0.65:boxborderw=18` +
+            `:x=(w-text_w)/2:y=h-(text_h+120)`;
+          filters.push(`[v1]drawtext=${txtBase}:text='${multi}'[vout]`);
+        } else {
+          filters.push(`[v1]copy[vout]`);
+        }
+      } else {
+        filters.push(`[v1]copy[vout]`);
+      }
+
+      // 오디오 믹스(훅이면 BGM 섞기 + 페이드)
+      const audioMix = buildAudioMixFilters({
+        hasBgm,
+        targetSec: target,
+        bgmGainDb: hookBgmGainDb,
+        duckDb: hookDuckDb,
+        fadeSec: hookBgmFadeSec,
+        ttsInputIndex: 1,
+        bgmInputIndex: hasBgm ? (hasLogo ? 3 : 2) : undefined,
+      });
+      filters.push(audioMix.filter);
+
+      args.push("-filter_complex", filters.join(";"), "-map", "[vout]", "-map", audioMix.map);
+
+      args.push(
+        "-t",
+        String(target),
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "20",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "192k",
+        "-movflags",
+        "+faststart",
+        clipPath
+      );
+
+      await run("ffmpeg", args);
+      clipPaths.push(clipPath);
+    }
+
+    // concat
+    const finalPath = path.join(workDir, "final.mp4");
+    const concatArgs: string[] = ["-hide_banner", "-loglevel", "error", "-y"];
+    for (const p of clipPaths) concatArgs.push("-i", p);
+
+    const parts = clipPaths.map((_, i) => `[${i}:v:0][${i}:a:0]`).join("");
+    const filter = `${parts}concat=n=${clipPaths.length}:v=1:a=1[outv][outa]`;
+
+    concatArgs.push(
+      "-filter_complex",
+      filter,
+      "-map",
+      "[outv]",
+      "-map",
+      "[outa]",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "20",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "192k",
+      "-movflags",
+      "+faststart",
+      finalPath
+    );
+
+    await run("ffmpeg", concatArgs);
+
+    const outBuf = await fs.readFile(finalPath);
+    return new NextResponse(outBuf, {
+      status: 200,
+      headers: { "Content-Type": "video/mp4", "Cache-Control": "no-store" },
+    });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || String(e) }, { status: 500 });
+  }
+}

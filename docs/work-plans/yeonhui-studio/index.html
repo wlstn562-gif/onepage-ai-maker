@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yeonhui Studio - Ttalkkak Passport AI</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#FFC107",
+              "accent-pink": "#FF6B6B",
+              "accent-blue": "#4DABF7",
+              "accent-green": "#51CF66",
+              "accent-purple": "#BE4BDB",
+              "background-vibrant": "#FFD43B",
+            },
+            fontFamily: {
+              display: ["Plus Jakarta Sans", "sans-serif"],
+            },
+            borderRadius: {
+              "2xl": "1.5rem",
+              "3xl": "2.5rem",
+              "4xl": "3rem",
+            },
+            boxShadow: {
+              "3d-black": "0 4px 0 0 #000000",
+              "3d-yellow": "0 4px 0 0 #D9A406",
+              "3d-pink": "0 8px 0 0 #E03131",
+              "3d-pink-sm": "0 4px 0 0 #E03131",
+              "3d-blue": "0 8px 0 0 #1971C2",
+              "3d-purple": "0 8px 0 0 #862E9C",
+              "3d-green": "0 8px 0 0 #2F9E44",
+              "card": "0 20px 50px rgba(0,0,0,0.1)",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      /* Custom utility for material symbols if needed, usually just class is enough */
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-background-vibrant font-display text-[#181610] min-h-screen">
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
