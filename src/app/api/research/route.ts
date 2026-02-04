@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 // Perplexity API or fallback to web search for facts
 export async function POST(req: Request) {

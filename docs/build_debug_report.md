@@ -3,51 +3,134 @@
 **Last Updated:** 2026-02-04
 **Project:** ddalkak-creator-studio
 **Version:** 1.0.0
+**Build Status:** SUCCESS
 
 ---
 
-## 1. Project Overview
+## 1. Latest Vercel Build Log
+
+### Build Info
+| Item | Value |
+|------|-------|
+| Timestamp | 2026-02-04 16:27:10 UTC |
+| Region | Washington, D.C., USA (iad1) |
+| Machine | 2 cores, 8 GB RAM |
+| Vercel CLI | 50.9.6 |
+| Repository | github.com/wlstn562-gif/onepage-ai-maker |
+| Branch | main |
+| Commit | aa06167 |
+
+### Build Timeline
+| Step | Duration | Status |
+|------|----------|--------|
+| Cloning | 457ms | OK |
+| Dependencies Install | 10s (179 packages) | OK |
+| Compilation | ~15s | OK |
+| Static Page Generation | 34 pages | OK |
+| **Total Build** | ~45s | SUCCESS |
+
+### Build Output
+```
+✓ Compiled successfully
+✓ Generating static pages (34/34)
+✓ Finalizing page optimization
+✓ Collecting build traces
+```
+
+---
+
+## 2. Warnings & Action Items
+
+### 2.1 CRITICAL - Security Vulnerability
+
+| Severity | Package | Issue | Action Required |
+|----------|---------|-------|-----------------|
+| HIGH | next@15.1.5 | CVE-2025-66478 Security Vulnerability | **UPGRADE IMMEDIATELY** |
+
+**Fix Command:**
+```bash
+npm install next@latest
+```
+
+**Reference:** https://nextjs.org/blog/CVE-2025-66478
+
+### 2.2 Deprecated Packages
+
+| Package | Message | Priority |
+|---------|---------|----------|
+| node-domexception@1.0.0 | Use platform's native DOMException | LOW |
+
+### 2.3 Edge Runtime Warning
+
+```
+⚠ Using edge runtime on a page currently disables static generation for that page
+```
+
+**Impact:** Some pages may not be statically generated
+**Resolution:** Review pages using edge runtime and consider switching to Node.js runtime if static generation is needed
+
+---
+
+## 3. Project Overview
 
 | Item | Value |
 |------|-------|
-| Framework | Next.js 15.1.5 |
+| Framework | Next.js 15.1.5 (needs upgrade) |
 | React | ^19.0.0 |
 | Styling | Tailwind CSS ^3.4.1 |
 | Language | TypeScript ^5 |
 | Package Manager | npm |
+| Total Packages | 179 |
 
 ---
 
-## 2. Build Configuration Status
+## 4. Dependencies Status
 
-### 2.1 Dependencies Check
+### 4.1 Core Dependencies
 
-| Package | Version | Status |
-|---------|---------|--------|
-| next | 15.1.5 | OK |
-| react | ^19.0.0 | OK |
-| react-dom | ^19.0.0 | OK |
-| tailwindcss | ^3.4.1 | OK |
-| @tailwindcss/container-queries | ^0.1.1 | OK |
-| sharp | ^0.34.5 | OK (Image optimization) |
-| zod | ^3.25.76 | OK (Validation) |
+| Package | Version | Status | Notes |
+|---------|---------|--------|-------|
+| next | 15.1.5 | VULNERABLE | Upgrade to latest |
+| react | ^19.0.0 | OK | |
+| react-dom | ^19.0.0 | OK | |
+| tailwindcss | ^3.4.1 | OK | |
+| @tailwindcss/container-queries | ^0.1.1 | OK | |
+| sharp | ^0.34.5 | OK | Image optimization |
+| zod | ^3.25.76 | OK | Validation |
+| openai | ^4.0.0 | OK | AI integration |
+| google-auth-library | ^9.0.0 | OK | |
+| google-trends-api | ^4.9.2 | OK | |
 
-### 2.2 Tailwind Configuration
+### 4.2 Recommended Upgrades
+
+```bash
+# Upgrade Next.js to fix security vulnerability
+npm install next@latest
+
+# Check for other outdated packages
+npm outdated
+```
+
+---
+
+## 5. Tailwind Configuration
 
 **File:** `tailwind.config.js`
 
+### Custom Colors
 ```javascript
-// Custom Colors Configured
 colors: {
-  primary: "#FFC107",           // Premium Gold
-  "accent-pink": "#FF6B6B",     // CTA Pink
-  "accent-blue": "#4DABF7",     // Feature Blue
-  "accent-green": "#51CF66",    // Success Green
-  "accent-purple": "#BE4BDB",   // Feature Purple
+  primary: "#FFC107",              // Premium Gold
+  "accent-pink": "#FF6B6B",        // CTA Pink
+  "accent-blue": "#4DABF7",        // Feature Blue
+  "accent-green": "#51CF66",       // Success Green
+  "accent-purple": "#BE4BDB",      // Feature Purple
   "background-vibrant": "#FFD43B", // Main Background
 }
+```
 
-// 3D Shadow Effects Configured
+### 3D Shadow Effects
+```javascript
 boxShadow: {
   "3d-black": "0 6px 0 0 #000000",
   "3d-pink": "0 8px 0 0 #E03131",
@@ -59,9 +142,7 @@ boxShadow: {
 
 ---
 
-## 3. Component Status
-
-### 3.1 Page Components
+## 6. Component Status
 
 | Component | Path | Status | Notes |
 |-----------|------|--------|-------|
@@ -72,34 +153,18 @@ boxShadow: {
 | CallToAction | `src/components/CallToAction.tsx` | OK | Pink CTA button, badge |
 | Footer | `src/components/Footer.tsx` | OK | Black rounded footer |
 
-### 3.2 Main Page
-
-**File:** `src/app/page.tsx`
-
-```tsx
-// Current Structure
-<Header />
-<main>
-  <Hero />
-  <Features />
-  <DemoSection />
-  <CallToAction />
-</main>
-<Footer />
-```
-
 ---
 
-## 4. Global Styles Status
+## 7. Global Styles Status
 
 **File:** `src/app/globals.css`
 
-### 4.1 Font Configuration
+### Font Configuration
 - **Primary Font:** Plus Jakarta Sans (Google Fonts)
 - **Icon Font:** Material Symbols Outlined
+- **Fallback:** Pretendard, system-ui
 
-### 4.2 CSS Variables
-
+### CSS Variables
 ```css
 :root {
   --vibrant-yellow: #FFD43B;
@@ -108,51 +173,74 @@ boxShadow: {
   --accent-blue: #4DABF7;
   --accent-green: #51CF66;
   --accent-purple: #BE4BDB;
+  --shadow-3d-black: 0 6px 0 0 #000000;
+  --shadow-3d-pink: 0 8px 0 0 #E03131;
 }
 ```
 
-### 4.3 Component Classes
-
+### Component Classes
 | Class | Description | Status |
 |-------|-------------|--------|
 | `.btn-3d` | Black 3D button | OK |
 | `.btn-3d-pink` | Pink CTA 3D button | OK |
 | `.btn-outline-3d` | Outlined 3D button | OK |
 | `.card-playful` | White card with hover | OK |
-| `.layout-container` | Max-width container | OK |
+| `.layout-container` | Max-width 1440px container | OK |
 
-### 4.4 Animations
-
+### Animations
 | Animation | Description | Status |
 |-----------|-------------|--------|
-| `fadeInUp` | Fade in with translate | OK |
-| `bounceSlow` | Slow bounce effect | OK |
-| `float` | Float with rotation | OK |
+| `fadeInUp` | Fade in with translateY(30px) | OK |
+| `bounceSlow` | 3s infinite bounce (-10px) | OK |
+| `float` | 4s infinite float with rotation | OK |
 
 ---
 
-## 5. Known Issues & Solutions
+## 8. Ignored Files (.vercelignore)
 
-### 5.1 RESOLVED Issues
+The following files are excluded from Vercel deployment:
+
+```
+/check_api.js
+/docs/build_debug_report.md
+/docs/work-plans/2026-02-03-yeonhui-studio-rebrand.md
+/docs/work-plans/yeonhui-studio/.gitignore
+/docs/work-plans/yeonhui-studio/App.tsx
+/docs/work-plans/yeonhui-studio/components/CallToAction.tsx
+/docs/work-plans/yeonhui-studio/components/DemoSection.tsx
+/docs/work-plans/yeonhui-studio/components/Features.tsx
+/docs/work-plans/yeonhui-studio/components/Footer.tsx
+/docs/work-plans/yeonhui-studio/components/Header.tsx
+```
+
+**Total:** 19 files removed from deployment
+
+---
+
+## 9. Resolved Issues
 
 | Issue | Solution | Status |
 |-------|----------|--------|
-| Components not rendering | Copied from `docs/work-plans/yeonhui-studio/components/` to `src/components/` | RESOLVED |
-| Center alignment missing | Added `items-center` and `text-center` classes | RESOLVED |
-| 3D shadow not working | Added custom Tailwind shadow utilities | RESOLVED |
-| Material Symbols not loading | Added Google Fonts import in globals.css | RESOLVED |
-
-### 5.2 Potential Issues to Monitor
-
-| Issue | Potential Cause | Recommended Fix |
-|-------|-----------------|-----------------|
-| Image loading slow | External Google images | Consider local images or CDN |
-| Font flash (FOUT) | Google Fonts loading | Add font-display: swap |
-| Mobile scroll issues | overflow-x-hidden missing | Added to root container |
+| Components not rendering | Copied to `src/components/` | RESOLVED |
+| Center alignment missing | Added `items-center`, `text-center` | RESOLVED |
+| 3D shadow not working | Added custom Tailwind utilities | RESOLVED |
+| Material Symbols not loading | Added Google Fonts import | RESOLVED |
+| Build failing | Fixed component imports | RESOLVED |
 
 ---
 
-## 6. Build Commands
+## 10. Potential Issues to Monitor
+
+| Issue | Cause | Recommended Fix |
+|-------|-------|-----------------|
+| Security vulnerability | next@15.1.5 | Upgrade to patched version |
+| Edge runtime warning | Pages using edge runtime | Review runtime config |
+| Image loading slow | External Google images | Use Next.js Image + CDN |
+| Font flash (FOUT) | Google Fonts loading | Add font-display: swap |
+
+---
+
+## 11. Build Commands
 
 ```bash
 # Development
@@ -166,11 +254,17 @@ npm start
 
 # Lint Check
 npm run lint
+
+# Check outdated packages
+npm outdated
+
+# Upgrade Next.js (RECOMMENDED)
+npm install next@latest
 ```
 
 ---
 
-## 7. File Structure
+## 12. File Structure
 
 ```
 src/
@@ -185,14 +279,18 @@ src/
 │   ├── DemoSection.tsx  # Before/After demo
 │   ├── CallToAction.tsx # CTA section
 │   └── Footer.tsx       # Footer component
+docs/
+├── build_debug_report.md
+└── work-plans/
+    ├── 2026-02-03-yeonhui-studio-rebrand.md
+    └── yeonhui-studio/   # Reference design files
 ```
 
 ---
 
-## 8. Design System Reference
+## 13. Design System Quick Reference
 
-### 8.1 Color Palette
-
+### Color Palette
 | Name | Hex | Usage |
 |------|-----|-------|
 | Vibrant Yellow | #FFD43B | Background |
@@ -203,8 +301,7 @@ src/
 | Accent Purple | #BE4BDB | Feature Icons |
 | Deep Black | #0A0A0A | Text/Buttons |
 
-### 8.2 Border Radius Scale
-
+### Border Radius Scale
 | Token | Value | Usage |
 |-------|-------|-------|
 | rounded-2xl | 1.5rem | Small elements |
@@ -213,80 +310,52 @@ src/
 | rounded-[50px] | 50px | Large sections |
 | rounded-[60px] | 60px | Phone mockup |
 
-### 8.3 3D Button Specifications
-
-```css
-/* Default State */
-box-shadow: 0 6px 0 0 #000000;
-
-/* Hover State */
-transform: translateY(3px);
-box-shadow: 0 3px 0 0 #000000;
-
-/* Active State */
-transform: translateY(6px);
-box-shadow: none;
-```
-
 ---
 
-## 9. Testing Checklist
+## 14. Testing Checklist
 
-- [ ] `npm run build` completes without errors
+- [x] `npm run build` completes without errors
+- [x] Static pages generated (34/34)
 - [ ] `npm run lint` passes
+- [ ] Security vulnerability fixed (next upgrade)
 - [ ] All components render correctly
 - [ ] Mobile responsive design works
 - [ ] 3D button hover/active states work
 - [ ] Material Symbols icons display
 - [ ] Before/After hover effect works
-- [ ] All links are functional
 - [ ] Korean text displays properly
 
 ---
 
-## 10. Deployment Notes
-
-### Environment Requirements
-- Node.js 18+ recommended
-- npm or yarn package manager
-
-### Pre-deployment Checklist
-1. Run `npm run build` to verify production build
-2. Check all external image URLs are accessible
-3. Verify Google Fonts are loading
-4. Test on multiple browsers (Chrome, Safari, Firefox)
-5. Test responsive design on mobile devices
-
----
-
-## 11. Debug Log
+## 15. Debug Log
 
 | Date | Issue | Resolution |
 |------|-------|------------|
 | 2026-02-04 | Initial component setup | Created all 6 main components |
 | 2026-02-04 | Style system setup | Configured Tailwind with custom colors and shadows |
 | 2026-02-04 | Korean localization | Updated Hero, Features, CTA with Korean text |
+| 2026-02-04 | Vercel build success | 34 static pages generated in ~45s |
+| 2026-02-04 | Security warning | Next.js CVE-2025-66478 identified, upgrade needed |
 
 ---
 
-## 12. Next Steps
+## 16. Priority Action Items
 
-1. **Performance Optimization**
-   - Implement image optimization with Next.js Image component
-   - Add lazy loading for below-fold content
+### HIGH Priority
+1. **Upgrade Next.js** - Fix security vulnerability CVE-2025-66478
+   ```bash
+   npm install next@latest
+   ```
 
-2. **Accessibility**
-   - Add ARIA labels to interactive elements
-   - Ensure color contrast meets WCAG standards
+### MEDIUM Priority
+2. Review edge runtime usage and consider Node.js runtime
+3. Implement Next.js Image component for optimization
 
-3. **SEO**
-   - Add metadata to layout.tsx
-   - Implement Open Graph tags
-
-4. **Testing**
-   - Add unit tests for components
-   - Implement E2E tests with Playwright
+### LOW Priority
+4. Clean up deprecated node-domexception dependency
+5. Add unit tests for components
 
 ---
 
 *Report generated for Yeonhui Studio development team*
+*Build ID: aa06167 | Region: iad1*
