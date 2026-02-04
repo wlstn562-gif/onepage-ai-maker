@@ -20,11 +20,11 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "YEONHUI.STUDIO - Premium Photo Studio",
-  description: "연희스튜디오 - AI 여권사진, 프리미엄 포토 스튜디오 서비스",
+  title: "연희스튜디오 (YEONHUI STUDIO) - Premium AI Photo & Video",
+  description: "연희스튜디오 - AI 여권사진, 프리미엄 영상 생성 서비스 (studioyeonhee.com)",
   openGraph: {
-    title: "YEONHUI.STUDIO",
-    description: "최고의 장비와 공간에서, 전문가와 함께하세요",
+    title: "연희스튜디오 (YEONHUI STUDIO)",
+    description: "최고의 AI 기술로 만드는 고퀄리티 영상과 사진",
     images: ['/og-image.jpg'],
     locale: 'ko_KR',
     type: 'website',

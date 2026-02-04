@@ -4,10 +4,11 @@ const Header: React.FC = () => {
   return (
     <header className="flex items-center justify-between px-6 md:px-20 py-6">
       <div className="flex items-center gap-3 cursor-pointer">
-        <div className="size-10 flex items-center justify-center bg-white rounded-2xl shadow-lg transform -rotate-6 hover:rotate-0 transition-transform">
-          <span className="material-symbols-outlined text-primary text-3xl font-bold">pets</span>
-        </div>
-        <h2 className="text-2xl font-black leading-tight tracking-tight">연희스튜디오</h2>
+        <img
+          src="/logo/3.png"
+          alt="연희스튜디오"
+          className="h-12 w-auto object-contain hover:scale-105 transition-transform"
+        />
       </div>
 
       <div className="hidden md:flex items-center gap-2 bg-white/30 backdrop-blur-md px-2 py-2 rounded-full border border-white/40 shadow-sm">
