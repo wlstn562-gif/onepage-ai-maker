@@ -49,3 +49,8 @@ next-env.d.ts
 *.jpg
 *.jpeg
 *.gif
+
+# secrets and backups
+gcp-key.json
+*.backup
+*.final.txt
