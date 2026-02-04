@@ -19,8 +19,8 @@ const Footer: React.FC = () => {
           <a className="hover:opacity-100 transition-opacity" href="#">Instagram</a>
         </div>
 
-        <div className="text-sm font-bold opacity-40">
-          © 2024 Yeonhui Studio. All rights reserved.
+        <div className="text-xs font-bold opacity-20">
+          © 2024 Yeonhui Studio. All rights reserved. v1.4
         </div>
       </div>
     </footer>
