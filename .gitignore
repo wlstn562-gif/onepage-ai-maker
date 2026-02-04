@@ -44,11 +44,13 @@ next-env.d.ts
 .cache_media/
 .data/
 .temp/
-*.mp4
-*.png
-*.jpg
-*.jpeg
-*.gif
+# Allow images in public/
+!public/**/*.png
+!public/**/*.jpg
+!public/**/*.jpeg
+!public/**/*.gif
+!public/**/*.ico
+!public/**/*.svg
 
 # secrets and backups
 gcp-key.json
