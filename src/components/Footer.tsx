@@ -8,7 +8,7 @@ const Footer: React.FC = () => {
           <img
             src="/logo/1.png"
             alt="Yeonhui Studio"
-            className="h-12 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
+            className="h-16 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
           />
         </div>
 
