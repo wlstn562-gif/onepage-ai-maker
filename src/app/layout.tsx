@@ -20,6 +20,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://studioyeonhee.com'),
   title: "연희스튜디오 (YEONHUI STUDIO) - Premium AI Photo & Video",
   description: "연희스튜디오 - AI 여권사진, 프리미엄 영상 생성 서비스 (studioyeonhee.com)",
   openGraph: {
