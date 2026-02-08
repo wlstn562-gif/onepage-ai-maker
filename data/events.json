@@ -1,0 +1,18 @@
+[
+    {
+        "id": "1",
+        "title": "주간 팀 회의",
+        "date": "2026-02-09",
+        "startTime": "10:00",
+        "endTime": "11:30",
+        "type": "meeting"
+    },
+    {
+        "id": "2",
+        "title": "프로젝트 킥오프",
+        "date": "2026-02-11",
+        "startTime": "14:00",
+        "endTime": "15:00",
+        "type": "event"
+    }
+]

@@ -16,13 +16,13 @@ export default function Navigation() {
           {/* 로고 */}
           <Link href="/" className="flex items-center gap-3 group">
             <div className="text-2xl font-black">
-              <span className="text-white">YEONHUI</span>
+              <span className="text-white">YEONHEE</span>
               <span className="text-[#D4AF37]">.STUDIO</span>
             </div>
             <span className="text-sm text-gray-400 font-medium tracking-widest hidden md:block">STAFF HUB</span>
           </Link>
 
-          {/* Navigation Links for Yeonhui Studio */}
+          {/* Navigation Links for Yeonhee Studio */}
           <div className="flex gap-8 items-center">
             <div className="hidden md:flex gap-8">
               {['Home', 'Service', 'Locations'].map((item) => (

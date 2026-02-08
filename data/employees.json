@@ -1,0 +1,92 @@
+[
+  {
+    "name": "김은혜",
+    "department": "천안팀",
+    "position": "사원",
+    "joinDate": "2025-06-16",
+    "totalLeave": 13.5,
+    "usedLeave": 3.5,
+    "id": "1770534741287",
+    "status": "suspended",
+    "suspendedAt": "2025-12-19",
+    "manualLeave": 2.5,
+    "username": "daymyhey",
+    "password": "1234",
+    "leaveHistory": [
+      {
+        "id": "1770536011095",
+        "date": "2025-11-28",
+        "type": "annual",
+        "days": 1,
+        "reason": "연차",
+        "createdAt": "2026-02-08T07:33:31.095Z"
+      },
+      {
+        "id": "1770536020515",
+        "date": "2025-10-02",
+        "type": "annual",
+        "days": 1,
+        "reason": "",
+        "createdAt": "2026-02-08T07:33:40.515Z"
+      },
+      {
+        "id": "1770536044572",
+        "date": "2025-08-04",
+        "type": "half",
+        "days": 0.5,
+        "reason": "",
+        "createdAt": "2026-02-08T07:34:04.572Z"
+      },
+      {
+        "id": "1770536115160",
+        "date": "2025-08-21",
+        "type": "annual",
+        "days": 1,
+        "reason": "",
+        "createdAt": "2026-02-08T07:35:15.160Z"
+      }
+    ]
+  },
+  {
+    "id": "1770541253601",
+    "name": "최영주",
+    "department": "대전둔산점",
+    "position": "사원",
+    "joinDate": "2026-01-01",
+    "totalLeave": 4,
+    "manualLeave": 2,
+    "status": "active",
+    "suspendedAt": "",
+    "username": "chldudwn777",
+    "password": "1234",
+    "usedLeave": 0
+  },
+  {
+    "id": "1770542223567",
+    "name": "김시영",
+    "department": "청주점",
+    "position": "사원",
+    "joinDate": "2026-01-01",
+    "totalLeave": 4,
+    "manualLeave": 2,
+    "status": "active",
+    "suspendedAt": "",
+    "username": "subact44",
+    "password": "1234",
+    "usedLeave": 0
+  },
+  {
+    "id": "1770542278454",
+    "name": "안지나",
+    "department": "천안점",
+    "position": "사원",
+    "joinDate": "2026-02-01",
+    "totalLeave": 0,
+    "manualLeave": 0,
+    "status": "active",
+    "suspendedAt": "",
+    "username": "jina2ro1",
+    "password": "1234",
+    "usedLeave": 0
+  }
+]

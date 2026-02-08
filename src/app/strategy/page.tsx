@@ -29,7 +29,7 @@ export default function StrategyPage() {
                         <a href="/strategy/research" className="block group h-full">
                             <div className="relative p-10 rounded-[32px] border border-white/10 bg-[#121212] hover:border-[var(--premium-gold)] transition-all duration-500 h-full text-left hover:-translate-y-2 hover:shadow-2xl overflow-hidden">
                                 <div className="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-100 group-hover:scale-110 transition-all duration-500 grayscale group-hover:grayscale-0">
-                                    <span className="text-6xl">🔍</span>
+                                    <span className="text-white">YEONHEE</span>
                                 </div>
                                 <div className="w-14 h-14 rounded-2xl bg-[var(--premium-gold)] flex items-center justify-center mb-8 text-black text-2xl group-hover:rotate-12 transition-transform">
                                     R
