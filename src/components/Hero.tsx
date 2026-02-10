@@ -28,20 +28,21 @@ const Hero: React.FC = () => {
           <div className="flex flex-col gap-4 items-center lg:items-start">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full w-fit shadow-md">
               <span className="material-symbols-outlined text-primary text-xl">verified</span>
-              <span className="text-sm font-extrabold text-black">BEST STUDIO 2024</span>
+              <span className="text-sm font-extrabold text-black">반려율 0.1%의 기록</span>
             </div>
             <h1 className="text-black text-6xl md:text-7xl font-black leading-[1.1] tracking-tight">
-              여권사진,<br />딸깍 하면 끝!
+              고품질 여권사진
             </h1>
             <p className="text-black/80 text-xl font-bold leading-relaxed max-w-md">
-              가장 귀엽고 간편한 여권사진 만들기. 스튜디오급 리터칭으로 완벽하게 보정해드려요!
+              스튜디오 전문가가 직접 보정하는 완벽한 여권사진.<br />
+              각 지점에서 가장 편한 시간에 만나보세요.
             </p>
           </div>
 
-          <Link href="/analyze" className="group relative flex w-full max-w-sm cursor-pointer items-center justify-center rounded-3xl h-20 px-10 bg-black text-white text-2xl font-black shadow-3d-black hover:shadow-[0_3px_0_0_#000] hover:translate-y-[3px] active:translate-y-[6px] active:shadow-none transition-all overflow-hidden lg:self-start self-center">
+          <Link href="#features" className="group relative flex w-full max-w-sm cursor-pointer items-center justify-center rounded-3xl h-20 px-10 bg-black text-white text-2xl font-black shadow-3d-black hover:shadow-[0_3px_0_0_#000] hover:translate-y-[3px] active:translate-y-[6px] active:shadow-none transition-all overflow-hidden lg:self-start self-center">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-            <span className="truncate">지금 시작하기</span>
-            <span className="material-symbols-outlined ml-3 text-3xl">camera_enhance</span>
+            <span className="truncate">가까운 지점 예약하기</span>
+            <span className="material-symbols-outlined ml-3 text-3xl">event_available</span>
           </Link>
         </div>
 
