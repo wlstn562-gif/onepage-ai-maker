@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import {
     FinanceTransaction, saveTransactionsAsync, getAllTransactionsAsync, clearAllTransactionsAsync,
-    generateFinanceId, formatCurrency, getMonthlySummaryAsync, CATEGORIES
+    deduplicateTransactionsAsync, generateFinanceId, formatCurrency, getMonthlySummaryAsync, CATEGORIES
 } from '@/lib/finance-store';
 
 interface ExcelRow {
@@ -207,7 +207,10 @@ ${truncated}`
 
     // ===== Save to finance_transactions =====
     const handleSave = async () => {
-        await saveTransactionsAsync(parsed);
+        const result = await saveTransactionsAsync(parsed);
+        if (result.skipped > 0) {
+            alert(`저장 완료!\n✅ 신규 ${result.inserted}건 저장\n⚠️ 중복 ${result.skipped}건 스킵`);
+        }
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
         setParsed([]);
@@ -221,6 +224,16 @@ ${truncated}`
     const handleClear = async () => {
         if (!confirm('모든 자금일보 데이터를 삭제하시겠습니까?')) return;
         await clearAllTransactionsAsync();
+        refreshStats();
+    };
+
+    const handleDeduplicate = async () => {
+        const result = await deduplicateTransactionsAsync();
+        if (result.removed === 0) {
+            alert('중복 데이터가 없습니다.');
+        } else {
+            alert(`중복 정리 완료!\n전체 ${result.before}건 → ${result.after}건\n🗑️ ${result.removed}건 제거`);
+        }
         refreshStats();
     };
 
@@ -273,6 +286,20 @@ ${truncated}`
                     </div>
                 </div>
             )}
+
+            {/* Data Management */}
+            <div className="flex gap-2 justify-end">
+                <button onClick={handleDeduplicate}
+                    className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 px-3 py-1.5 rounded-lg transition-colors">
+                    <span className="material-symbols-outlined text-[14px]">filter_alt</span>
+                    중복 정리
+                </button>
+                <button onClick={handleClear}
+                    className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-lg transition-colors">
+                    <span className="material-symbols-outlined text-[14px]">delete_sweep</span>
+                    전체 초기화
+                </button>
+            </div>
 
             {/* Tab Toggle */}
             <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1">

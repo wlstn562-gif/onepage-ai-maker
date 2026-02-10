@@ -36,6 +36,11 @@ export function formatCurrency(n: number): string {
     return n.toLocaleString('ko-KR');
 }
 
+// Hash for dedup: date+type+amount+client+description
+export function txHash(t: Pick<FinanceTransaction, 'trans_date' | 'type' | 'amount' | 'client' | 'description'>): string {
+    return `${t.trans_date}|${t.type}|${t.amount}|${t.client}|${t.description}`.toLowerCase().trim();
+}
+
 // ===== IndexedDB Helper =====
 function openDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
@@ -161,13 +166,34 @@ export async function saveTransactionAsync(tx: FinanceTransaction): Promise<void
     });
 }
 
-export async function saveTransactionsAsync(txs: FinanceTransaction[]): Promise<number> {
+export async function saveTransactionsAsync(txs: FinanceTransaction[], skipDuplicates = true): Promise<{ inserted: number; skipped: number }> {
+    const existing = await getAllTransactionsAsync();
+    const existingHashes = new Set(existing.map(t => txHash(t)));
+
+    let toInsert = txs;
+    let skipped = 0;
+    if (skipDuplicates) {
+        toInsert = txs.filter(t => {
+            const h = txHash(t);
+            if (existingHashes.has(h)) {
+                skipped++;
+                return false;
+            }
+            existingHashes.add(h); // prevent intra-batch duplicates
+            return true;
+        });
+    }
+
+    if (toInsert.length === 0) {
+        return { inserted: 0, skipped };
+    }
+
     const db = await openDB();
     return new Promise((resolve, reject) => {
         const transaction = db.transaction(STORE_NAME, 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
-        txs.forEach(t => store.put(t));
-        transaction.oncomplete = () => { invalidateCache(); resolve(txs.length); };
+        toInsert.forEach(t => store.put(t));
+        transaction.oncomplete = () => { invalidateCache(); resolve({ inserted: toInsert.length, skipped }); };
         transaction.onerror = () => reject(transaction.error);
     });
 }
@@ -179,6 +205,45 @@ export async function deleteTransactionAsync(id: string): Promise<void> {
         const store = transaction.objectStore(STORE_NAME);
         store.delete(id);
         transaction.oncomplete = () => { invalidateCache(); resolve(); };
+        transaction.onerror = () => reject(transaction.error);
+    });
+}
+
+// Remove duplicate transactions, keeping first occurrence
+export async function deduplicateTransactionsAsync(): Promise<{ before: number; after: number; removed: number }> {
+    const all = await getAllTransactionsAsync();
+    const seen = new Set<string>();
+    const unique: FinanceTransaction[] = [];
+    const duplicateIds: string[] = [];
+
+    // Sort by createdAt to keep oldest
+    all.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+
+    for (const t of all) {
+        const h = txHash(t);
+        if (seen.has(h)) {
+            duplicateIds.push(t.id);
+        } else {
+            seen.add(h);
+            unique.push(t);
+        }
+    }
+
+    if (duplicateIds.length === 0) {
+        return { before: all.length, after: all.length, removed: 0 };
+    }
+
+    // Clear and re-insert only unique
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        store.clear();
+        unique.forEach(t => store.put(t));
+        transaction.oncomplete = () => {
+            invalidateCache();
+            resolve({ before: all.length, after: unique.length, removed: duplicateIds.length });
+        };
         transaction.onerror = () => reject(transaction.error);
     });
 }
