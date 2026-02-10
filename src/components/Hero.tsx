@@ -19,7 +19,7 @@ const Hero: React.FC = () => {
           {/* Badge */}
           <div className="absolute -bottom-6 -right-6 bg-accent-pink text-white p-4 rounded-3xl shadow-xl transform rotate-12 flex flex-col items-center animate-bounce duration-[3000ms]">
             <span className="material-symbols-outlined text-4xl">auto_awesome</span>
-            <span className="text-[10px] font-black uppercase">Magic AI</span>
+            <span className="text-[10px] font-black uppercase">Magic Studio</span>
           </div>
         </div>
 
@@ -34,7 +34,7 @@ const Hero: React.FC = () => {
               여권사진,<br />딸깍 하면 끝!
             </h1>
             <p className="text-black/80 text-xl font-bold leading-relaxed max-w-md">
-              가장 귀엽고 간편한 여권사진 만들기. AI가 자동으로 완벽하게 보정해드려요!
+              가장 귀엽고 간편한 여권사진 만들기. 스튜디오급 리터칭으로 완벽하게 보정해드려요!
             </p>
           </div>
 

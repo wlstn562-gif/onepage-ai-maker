@@ -34,7 +34,7 @@ const Features: React.FC = () => {
         icon="face_retouching_natural"
         color="bg-accent-blue"
         shadowColor="#1971C2"
-        title="AI 자동 보정"
+        title="스마트 자동 보정"
         description="클릭 한 번으로 피부톤과 머릿결을 완벽하게."
       />
       <FeatureCard

@@ -12,7 +12,7 @@ const DemoSection: React.FC = () => {
         </h2>
         <p className="text-zinc-500 font-bold text-lg max-w-lg mt-8">
           내 손안의 작은 스튜디오.<br />
-          AI가 선사하는 완벽한 결과물을 경험해보세요.
+          터치 한 번으로 완성되는 완벽한 결과물을 경험해보세요.
         </p>
       </div>
 
@@ -21,7 +21,7 @@ const DemoSection: React.FC = () => {
         <PassportAnalyzer />
 
         <div className="mt-16 text-center text-[12px] text-zinc-400 font-bold uppercase tracking-widest">
-          Yeonhui AI Studio • Professional Standards • 2026
+          Yeonhui Studio • Professional Standards • 2026
         </div>
       </div>
     </div>

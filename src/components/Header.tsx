@@ -32,7 +32,7 @@ const Header: React.FC = () => {
 
       <div className="hidden md:flex items-center gap-2 bg-white/30 backdrop-blur-md px-2 py-2 rounded-full border border-white/40 shadow-sm">
         <Link className="text-sm font-bold text-black/70 hover:text-black px-6 py-2 rounded-full transition-colors" href="#">홈</Link>
-        <Link className="text-sm font-black text-black bg-white px-6 py-2 rounded-full shadow-sm" href="#features">AI 여권사진</Link>
+        <Link className="text-sm font-black text-black bg-white px-6 py-2 rounded-full shadow-sm" href="#features">모바일 여권사진</Link>
         <Link className="text-sm font-bold text-black/70 hover:text-black px-6 py-2 rounded-full transition-colors" href="#demo">데모보기</Link>
         <Link className="text-sm font-bold text-black/70 hover:text-black px-6 py-2 rounded-full transition-colors" href="#service">가격안내</Link>
       </div>
