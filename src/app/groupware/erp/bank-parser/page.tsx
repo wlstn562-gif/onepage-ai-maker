@@ -3,8 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import {
-    FinanceTransaction, saveTransactions, getAllTransactions, clearAllTransactions,
-    generateFinanceId, formatCurrency, getMonthlySummary, CATEGORIES
+    FinanceTransaction, saveTransactionsAsync, getAllTransactionsAsync, clearAllTransactionsAsync,
+    generateFinanceId, formatCurrency, getMonthlySummaryAsync, CATEGORIES
 } from '@/lib/finance-store';
 
 interface ExcelRow {
@@ -29,17 +29,17 @@ export default function FundDailyPage() {
     // Quick stats
     const now = new Date();
     const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const [monthlySummary, setMonthlySummary] = useState<ReturnType<typeof getMonthlySummary> | null>(null);
+    const [monthlySummary, setMonthlySummary] = useState<{ yearMonth: string; totalIncome: number; totalExpense: number; netProfit: number; count: number } | null>(null);
+
+    const refreshStats = async () => {
+        const all = await getAllTransactionsAsync();
+        setSavedCount(all.length);
+        setMonthlySummary(await getMonthlySummaryAsync(currentYM));
+    };
 
     useEffect(() => {
-        setSavedCount(getAllTransactions().length);
-        setMonthlySummary(getMonthlySummary(currentYM));
+        refreshStats();
     }, [currentYM]);
-
-    const refreshStats = () => {
-        setSavedCount(getAllTransactions().length);
-        setMonthlySummary(getMonthlySummary(currentYM));
-    };
 
     // ===== Excel Handling =====
     const handleExcelFile = useCallback((file: File) => {
@@ -206,8 +206,8 @@ ${truncated}`
     };
 
     // ===== Save to finance_transactions =====
-    const handleSave = () => {
-        saveTransactions(parsed);
+    const handleSave = async () => {
+        await saveTransactionsAsync(parsed);
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
         setParsed([]);
@@ -218,9 +218,9 @@ ${truncated}`
         refreshStats();
     };
 
-    const handleClear = () => {
+    const handleClear = async () => {
         if (!confirm('모든 자금일보 데이터를 삭제하시겠습니까?')) return;
-        clearAllTransactions();
+        await clearAllTransactionsAsync();
         refreshStats();
     };
 

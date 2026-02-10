@@ -1,4 +1,4 @@
-// ===== 안티그래비티 자금관리 시스템 - Data Layer =====
+// ===== 안티그래비티 자금관리 시스템 - Data Layer (IndexedDB) =====
 
 export interface FinanceTransaction {
     id: string;
@@ -7,17 +7,16 @@ export interface FinanceTransaction {
     amount: number;
     client: string;         // 거래처
     description: string;    // 적요(내용)
-    category: string;       // 계정과목: 매출, 식대/복리후생, 인건비, 장비비, 기타운영비 등
-    project_name: string;   // 관련 프로젝트: 공통운영, 골프존, 록스소사이어티 등
+    category: string;       // 계정과목
+    project_name: string;   // 관련 프로젝트
     createdAt: string;
 }
 
-const STORAGE_KEYS = {
-    TRANSACTIONS: 'finance_transactions',
-    PROJECTS: 'finance_projects',
-};
+const DB_NAME = 'finance_db';
+const DB_VERSION = 1;
+const STORE_NAME = 'transactions';
+const PROJECTS_STORE = 'projects';
 
-// ===== Default Projects =====
 const DEFAULT_PROJECTS = ['공통운영', '골프존', '록스소사이어티', '마인드바이러스'];
 
 const CATEGORIES = [
@@ -37,13 +36,62 @@ export function formatCurrency(n: number): string {
     return n.toLocaleString('ko-KR');
 }
 
+// ===== IndexedDB Helper =====
+function openDB(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (event) => {
+            const db = (event.target as IDBOpenDBRequest).result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                store.createIndex('trans_date', 'trans_date', { unique: false });
+                store.createIndex('type', 'type', { unique: false });
+                store.createIndex('project_name', 'project_name', { unique: false });
+            }
+            if (!db.objectStoreNames.contains(PROJECTS_STORE)) {
+                db.createObjectStore(PROJECTS_STORE, { keyPath: 'name' });
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// ===== Migrate from localStorage if exists =====
+async function migrateFromLocalStorage(): Promise<void> {
+    if (typeof window === 'undefined') return;
+    const existing = localStorage.getItem('finance_transactions');
+    if (!existing) return;
+    try {
+        const txs: FinanceTransaction[] = JSON.parse(existing);
+        if (txs.length > 0) {
+            const db = await openDB();
+            const tx = db.transaction(STORE_NAME, 'readwrite');
+            const store = tx.objectStore(STORE_NAME);
+            txs.forEach(t => store.put(t));
+            await new Promise<void>((resolve, reject) => {
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+            localStorage.removeItem('finance_transactions');
+            console.log(`[Finance] Migrated ${txs.length} records from localStorage to IndexedDB`);
+        }
+    } catch (e) {
+        console.error('[Finance] Migration failed:', e);
+    }
+}
+
+// Run migration on load
+if (typeof window !== 'undefined') {
+    migrateFromLocalStorage();
+}
+
 // ===== Projects CRUD =====
 export function getProjects(): string[] {
     if (typeof window === 'undefined') return DEFAULT_PROJECTS;
     try {
-        const data = localStorage.getItem(STORAGE_KEYS.PROJECTS);
+        const data = localStorage.getItem('finance_projects');
         const saved = data ? JSON.parse(data) : [];
-        // Merge defaults with saved
         const set = new Set([...DEFAULT_PROJECTS, ...saved]);
         return Array.from(set);
     } catch {
@@ -55,59 +103,145 @@ export function addProject(name: string): void {
     const projects = getProjects();
     if (!projects.includes(name)) {
         projects.push(name);
-        localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
+        localStorage.setItem('finance_projects', JSON.stringify(projects));
     }
 }
 
-// ===== Transactions CRUD =====
+// ===== Transactions CRUD (Async IndexedDB) =====
+
+export async function getAllTransactionsAsync(): Promise<FinanceTransaction[]> {
+    if (typeof window === 'undefined') return [];
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Synchronous fallback using in-memory cache
+let _cache: FinanceTransaction[] | null = null;
+let _cacheLoading = false;
+
 export function getAllTransactions(): FinanceTransaction[] {
     if (typeof window === 'undefined') return [];
+    if (_cache !== null) return _cache;
+    // Trigger async load
+    if (!_cacheLoading) {
+        _cacheLoading = true;
+        getAllTransactionsAsync().then(data => {
+            _cache = data;
+            _cacheLoading = false;
+        });
+    }
+    // Fallback: try localStorage
     try {
-        const data = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
+        const data = localStorage.getItem('finance_transactions');
         return data ? JSON.parse(data) : [];
     } catch {
         return [];
     }
 }
 
+export function invalidateCache(): void {
+    _cache = null;
+    _cacheLoading = false;
+}
+
+export async function saveTransactionAsync(tx: FinanceTransaction): Promise<void> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        store.put(tx);
+        transaction.oncomplete = () => { invalidateCache(); resolve(); };
+        transaction.onerror = () => reject(transaction.error);
+    });
+}
+
+export async function saveTransactionsAsync(txs: FinanceTransaction[]): Promise<number> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        txs.forEach(t => store.put(t));
+        transaction.oncomplete = () => { invalidateCache(); resolve(txs.length); };
+        transaction.onerror = () => reject(transaction.error);
+    });
+}
+
+export async function deleteTransactionAsync(id: string): Promise<void> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        store.delete(id);
+        transaction.oncomplete = () => { invalidateCache(); resolve(); };
+        transaction.onerror = () => reject(transaction.error);
+    });
+}
+
+export async function clearAllTransactionsAsync(): Promise<void> {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        store.clear();
+        transaction.oncomplete = () => { invalidateCache(); resolve(); };
+        transaction.onerror = () => reject(transaction.error);
+    });
+}
+
+// ===== Sync wrappers (backward compat) =====
 export function saveTransaction(tx: FinanceTransaction): void {
-    const all = getAllTransactions();
-    all.push(tx);
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(all));
+    saveTransactionAsync(tx);
 }
 
 export function saveTransactions(txs: FinanceTransaction[]): void {
-    const all = getAllTransactions();
-    all.push(...txs);
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(all));
+    saveTransactionsAsync(txs);
 }
 
 export function deleteTransaction(id: string): void {
-    const all = getAllTransactions().filter(t => t.id !== id);
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(all));
+    deleteTransactionAsync(id);
 }
 
 export function clearAllTransactions(): void {
-    localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
+    clearAllTransactionsAsync();
 }
 
 // ===== Statistics =====
 
-// Monthly summary for a given YYYY-MM
 export function getMonthlySummary(yearMonth: string) {
-    const all = getAllTransactions().filter(t => t.trans_date.startsWith(yearMonth));
-    const income = all.filter(t => t.type === '매출').reduce((s, t) => s + t.amount, 0);
-    const expense = all.filter(t => t.type === '지출').reduce((s, t) => s + t.amount, 0);
+    const all = getAllTransactions();
+    const filtered = all.filter(t => t.trans_date.startsWith(yearMonth));
+    const income = filtered.filter(t => t.type === '매출').reduce((s, t) => s + t.amount, 0);
+    const expense = filtered.filter(t => t.type === '지출').reduce((s, t) => s + t.amount, 0);
     return {
         yearMonth,
         totalIncome: income,
         totalExpense: expense,
         netProfit: income - expense,
-        count: all.length,
+        count: filtered.length,
     };
 }
 
-// Project-based margin
+// Async version for accurate data
+export async function getMonthlySummaryAsync(yearMonth: string) {
+    const all = await getAllTransactionsAsync();
+    const filtered = all.filter(t => t.trans_date.startsWith(yearMonth));
+    const income = filtered.filter(t => t.type === '매출').reduce((s, t) => s + t.amount, 0);
+    const expense = filtered.filter(t => t.type === '지출').reduce((s, t) => s + t.amount, 0);
+    return {
+        yearMonth,
+        totalIncome: income,
+        totalExpense: expense,
+        netProfit: income - expense,
+        count: filtered.length,
+    };
+}
+
 export function getProjectSummary() {
     const all = getAllTransactions();
     const projects = new Map<string, { income: number; expense: number; count: number }>();
@@ -131,7 +265,29 @@ export function getProjectSummary() {
     })).sort((a, b) => b.income - a.income);
 }
 
-// Category breakdown for a given month
+export async function getProjectSummaryAsync() {
+    const all = await getAllTransactionsAsync();
+    const projects = new Map<string, { income: number; expense: number; count: number }>();
+
+    all.forEach(t => {
+        const p = t.project_name || '공통운영';
+        if (!projects.has(p)) projects.set(p, { income: 0, expense: 0, count: 0 });
+        const entry = projects.get(p)!;
+        if (t.type === '매출') entry.income += t.amount;
+        else entry.expense += t.amount;
+        entry.count++;
+    });
+
+    return Array.from(projects.entries()).map(([name, data]) => ({
+        project: name,
+        income: data.income,
+        expense: data.expense,
+        profit: data.income - data.expense,
+        margin: data.income > 0 ? Math.round((data.income - data.expense) / data.income * 100) : 0,
+        count: data.count,
+    })).sort((a, b) => b.income - a.income);
+}
+
 export function getCategoryBreakdown(yearMonth?: string) {
     let all = getAllTransactions();
     if (yearMonth) all = all.filter(t => t.trans_date.startsWith(yearMonth));
@@ -146,9 +302,38 @@ export function getCategoryBreakdown(yearMonth?: string) {
         .sort((a, b) => b.amount - a.amount);
 }
 
-// Monthly trend (last N months)
+export async function getCategoryBreakdownAsync(yearMonth?: string) {
+    let all = await getAllTransactionsAsync();
+    if (yearMonth) all = all.filter(t => t.trans_date.startsWith(yearMonth));
+
+    const cats = new Map<string, number>();
+    all.filter(t => t.type === '지출').forEach(t => {
+        cats.set(t.category, (cats.get(t.category) || 0) + t.amount);
+    });
+
+    return Array.from(cats.entries())
+        .map(([category, amount]) => ({ category, amount }))
+        .sort((a, b) => b.amount - a.amount);
+}
+
 export function getMonthlyTrend(months: number = 12) {
     const all = getAllTransactions();
+    const trend: { month: string; income: number; expense: number; net: number }[] = [];
+
+    const now = new Date();
+    for (let i = months - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const monthTxs = all.filter(t => t.trans_date.startsWith(ym));
+        const income = monthTxs.filter(t => t.type === '매출').reduce((s, t) => s + t.amount, 0);
+        const expense = monthTxs.filter(t => t.type === '지출').reduce((s, t) => s + t.amount, 0);
+        trend.push({ month: ym, income, expense, net: income - expense });
+    }
+    return trend;
+}
+
+export async function getMonthlyTrendAsync(months: number = 12) {
+    const all = await getAllTransactionsAsync();
     const trend: { month: string; income: number; expense: number; net: number }[] = [];
 
     const now = new Date();

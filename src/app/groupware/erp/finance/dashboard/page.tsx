@@ -2,26 +2,29 @@
 
 import { useState, useEffect } from 'react';
 import {
-    getAllTransactions, getMonthlySummary, getProjectSummary,
-    getCategoryBreakdown, getMonthlyTrend, formatCurrency
+    getAllTransactionsAsync, getMonthlySummaryAsync, getProjectSummaryAsync,
+    getCategoryBreakdownAsync, getMonthlyTrendAsync, formatCurrency
 } from '@/lib/finance-store';
 
-export default function FinanceDashboardPage() {
+export default function MonthlyClosingPage() {
     const now = new Date();
     const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const [selectedMonth, setSelectedMonth] = useState(currentYM);
-    const [monthly, setMonthly] = useState<ReturnType<typeof getMonthlySummary> | null>(null);
-    const [projectData, setProjectData] = useState<ReturnType<typeof getProjectSummary>>([]);
-    const [categoryData, setCategoryData] = useState<ReturnType<typeof getCategoryBreakdown>>([]);
-    const [trend, setTrend] = useState<ReturnType<typeof getMonthlyTrend>>([]);
+    const [monthly, setMonthly] = useState<{ yearMonth: string; totalIncome: number; totalExpense: number; netProfit: number; count: number } | null>(null);
+    const [projectData, setProjectData] = useState<{ project: string; income: number; expense: number; profit: number; margin: number; count: number }[]>([]);
+    const [categoryData, setCategoryData] = useState<{ category: string; amount: number }[]>([]);
+    const [trend, setTrend] = useState<{ month: string; income: number; expense: number; net: number }[]>([]);
     const [totalCount, setTotalCount] = useState(0);
 
     useEffect(() => {
-        setMonthly(getMonthlySummary(selectedMonth));
-        setProjectData(getProjectSummary());
-        setCategoryData(getCategoryBreakdown(selectedMonth));
-        setTrend(getMonthlyTrend(6));
-        setTotalCount(getAllTransactions().length);
+        const load = async () => {
+            setMonthly(await getMonthlySummaryAsync(selectedMonth));
+            setProjectData(await getProjectSummaryAsync());
+            setCategoryData(await getCategoryBreakdownAsync(selectedMonth));
+            setTrend(await getMonthlyTrendAsync(6));
+            setTotalCount((await getAllTransactionsAsync()).length);
+        };
+        load();
     }, [selectedMonth]);
 
     const getBarWidth = (val: number, max: number) => max > 0 ? Math.max((val / max) * 100, 2) : 0;
