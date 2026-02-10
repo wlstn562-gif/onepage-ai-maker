@@ -97,7 +97,7 @@ export default function LoginPage() {
                 </form>
 
                 <div className="mt-4 text-center text-xs text-zinc-600">
-                    데모 계정: employee / 1234
+                    데모 계정: admin / 1234 또는 jina2ro1 / 1234
                 </div>
             </div>
         </div>

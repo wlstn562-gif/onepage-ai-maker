@@ -88,18 +88,5 @@
     "username": "jina2ro1",
     "password": "1234",
     "usedLeave": 0
-  },
-  {
-    "id": "demo-employee",
-    "name": "데모 직원",
-    "department": "영업팀",
-    "position": "매니저",
-    "joinDate": "2026-01-01",
-    "totalLeave": 15,
-    "manualLeave": 0,
-    "status": "active",
-    "username": "employee",
-    "password": "1234",
-    "usedLeave": 0
   }
 ]
