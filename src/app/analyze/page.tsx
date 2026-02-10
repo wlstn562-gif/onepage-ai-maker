@@ -514,6 +514,10 @@ export default function Page() {
         if (!img || !imgSize) return;
         if (!crown || !chin) return;
 
+        // [Add] Final confirmation before download
+        const ok = window.confirm("정수리 끝과 턱끝 위치를 정확하게 맞추셨나요?\n확인을 누르면 여권 규격 사진이 생성됩니다.");
+        if (!ok) return;
+
         // 1) 스케일 계산: headLen(원본) -> targetHeadPx(출력)
         const headLen = Math.abs(chin.y - crown.y);
         if (headLen < 1) return;
