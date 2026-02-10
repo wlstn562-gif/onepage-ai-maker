@@ -69,6 +69,11 @@ export default function GroupwareLayout({
     const menuItems = [
         { name: '대시보드', href: '/groupware', icon: 'dashboard' },
         { name: '내 연차 관리', href: '/groupware/leave', icon: 'event_available' },
+        { name: '── 매출 관리 ──', href: '', icon: '', divider: true },
+        { name: '판매 입력', href: '/groupware/erp/input', icon: 'edit_note' },
+        { name: '판매 조회', href: '/groupware/erp/list', icon: 'receipt_long' },
+        { name: '매출 현황', href: '/groupware/erp/status', icon: 'calendar_month' },
+        { name: 'AI 자금일보', href: '/groupware/erp/bank-parser', icon: 'smart_toy' },
     ];
 
     if (role === 'admin') {
@@ -88,14 +93,21 @@ export default function GroupwareLayout({
                     </Link>
                 </div>
 
-                <nav className="flex-1 px-4 space-y-2 mt-4">
-                    {menuItems.map((item) => {
+                <nav className="flex-1 px-4 space-y-1 mt-4">
+                    {menuItems.map((item, idx) => {
+                        if ((item as any).divider) {
+                            return (
+                                <div key={idx} className="pt-4 pb-1 px-4">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">{item.name.replace(/─/g, '').trim()}</span>
+                                </div>
+                            );
+                        }
                         const isActive = pathname === item.href;
                         return (
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive
+                                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
                                     ? 'bg-yellow-500/10 text-yellow-500'
                                     : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
                                     }`}
