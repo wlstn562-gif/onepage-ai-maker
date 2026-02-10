@@ -2,7 +2,15 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { TEAMS } from '@/lib/teams';
-import { Send, Bot, CheckCircle2, MoreVertical, LayoutGrid, Users, Settings } from 'lucide-react';
+import Link from 'next/link';
+import { Send, Bot, CheckCircle2, MoreVertical, LayoutGrid, Users, Settings, ArrowLeft, ExternalLink, RotateCcw } from 'lucide-react';
+
+const STORAGE_KEYS = {
+    MESSAGES: 'studio_chat_messages',
+    ARTIFACTS: 'studio_artifacts',
+    ACTIVE_TEAM: 'studio_active_team_id',
+    MODE: 'studio_console_mode'
+};
 
 interface ChatMessage {
     role: 'user' | 'assistant';
@@ -25,7 +33,44 @@ export default function StudioPage() {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [artifacts, setArtifacts] = useState<Artifact[]>([]);
     const [loading, setLoading] = useState(false);
+    const [isLoaded, setIsLoaded] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Initial load from localStorage
+    useEffect(() => {
+        try {
+            const savedMsgs = localStorage.getItem(STORAGE_KEYS.MESSAGES);
+            const savedArts = localStorage.getItem(STORAGE_KEYS.ARTIFACTS);
+            const savedTeam = localStorage.getItem(STORAGE_KEYS.ACTIVE_TEAM);
+            const savedMode = localStorage.getItem(STORAGE_KEYS.MODE);
+
+            if (savedMsgs) setMessages(JSON.parse(savedMsgs));
+            if (savedArts) setArtifacts(JSON.parse(savedArts));
+            if (savedTeam && savedTeam !== 'null') setActiveTeamId(savedTeam);
+            if (savedMode) setConsoleMode(savedMode as any);
+        } catch (e) {
+            console.error('Failed to load from storage', e);
+        }
+        setIsLoaded(true);
+    }, []);
+
+    // Save to localStorage when state changes
+    useEffect(() => {
+        if (!isLoaded) return;
+        localStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(messages));
+        localStorage.setItem(STORAGE_KEYS.ARTIFACTS, JSON.stringify(artifacts));
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_TEAM, String(activeTeamId));
+        localStorage.setItem(STORAGE_KEYS.MODE, consoleMode);
+    }, [messages, artifacts, activeTeamId, consoleMode, isLoaded]);
+
+    const handleClearHistory = () => {
+        if (confirm('모든 대화 내역과 결과물을 초기화하시겠습니까?')) {
+            setMessages([]);
+            setArtifacts([]);
+            localStorage.removeItem(STORAGE_KEYS.MESSAGES);
+            localStorage.removeItem(STORAGE_KEYS.ARTIFACTS);
+        }
+    };
 
     // Auto-scroll to bottom of chat
     useEffect(() => {
@@ -108,7 +153,12 @@ export default function StudioPage() {
             {/* 1. Top Bar */}
             <header className="flex h-16 shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-950 px-6">
                 <div className="flex items-center gap-4">
-                    <h1 className="text-xl font-bold tracking-tight text-white mr-8">TEAM CONSOLE</h1>
+                    <Link href="/" className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-800 text-zinc-400 hover:text-white transition-colors mr-2" title="관리자 홈">
+                        <ArrowLeft size={18} />
+                    </Link>
+                    <h1 className="text-xl font-bold tracking-tight text-white mr-8 hover:text-zinc-300 transition-colors">
+                        <Link href="/">TEAM CONSOLE</Link>
+                    </h1>
 
                     {/* Mode Selectors */}
                     <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-lg">
@@ -139,11 +189,20 @@ export default function StudioPage() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-zinc-700 cursor-pointer">
-                        <Settings size={18} />
+                <div className="flex items-center gap-6">
+                    <Link
+                        href="/photo"
+                        className="flex items-center gap-2 text-xs font-medium text-zinc-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg border border-zinc-800 hover:bg-zinc-900"
+                    >
+                        <ExternalLink size={14} />
+                        연희스튜디오 가기
+                    </Link>
+                    <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 hover:bg-zinc-700 cursor-pointer" onClick={handleClearHistory} title="대화 초기화">
+                            <RotateCcw size={18} />
+                        </div>
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600" />
                     </div>
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-yellow-400 to-amber-600" />
                 </div>
             </header>
 
