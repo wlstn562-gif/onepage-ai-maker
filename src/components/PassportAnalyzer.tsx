@@ -43,6 +43,9 @@ export default function PassportAnalyzer() {
     const [modelsLoaded, setModelsLoaded] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [faceDetected, setFaceDetected] = useState(false);
+    const [showHelp, setShowHelp] = useState(false);
+    const [showInitialPopup, setShowInitialPopup] = useState(false);
+    const [isFileLoading, setIsFileLoading] = useState(false);
 
     const imgRef = useRef<HTMLImageElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -122,11 +125,17 @@ export default function PassportAnalyzer() {
 
         // Draw guide lines
         ctx.setLineDash([6, 4]);
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2.5; // Thicker for mobile
+        ctx.strokeStyle = '#ff4d4d'; // Red for visibility
         ctx.beginPath(); ctx.moveTo(0, TARGET_TOP_PX); ctx.lineTo(OUT_W, TARGET_TOP_PX); ctx.stroke();
+
+        ctx.font = 'bold 24px sans-serif';
+        ctx.fillStyle = '#ff4d4d';
+        ctx.fillText('정수리', 10, TARGET_TOP_PX - 8);
+
         const chinLineY = TARGET_TOP_PX + TARGET_HEAD_HEIGHT;
         ctx.beginPath(); ctx.moveTo(0, chinLineY); ctx.lineTo(OUT_W, chinLineY); ctx.stroke();
+        ctx.fillText('턱끝', 10, chinLineY + 30);
         ctx.setLineDash([]);
 
         setPreviewUrl(canvas.toDataURL('image/jpeg', 0.92));
@@ -137,9 +146,17 @@ export default function PassportAnalyzer() {
     // --- File Handling ---
     const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
         const f = e.target.files?.[0]; if (!f) return;
-        setFileUrl(URL.createObjectURL(f));
+        setIsFileLoading(true);
+        const url = URL.createObjectURL(f);
+        setFileUrl(url);
         setCrown(null); setChin(null); setFaceBox(null);
         setMode('none'); setPreviewUrl(null); setFaceDetected(false);
+
+        // Brief delay to show loading state
+        setTimeout(() => {
+            setIsFileLoading(false);
+            setShowInitialPopup(true);
+        }, 800);
     };
 
     const nudge = (dir: number) => {
@@ -253,33 +270,33 @@ export default function PassportAnalyzer() {
             ctx.fillText('얼굴영역', bx + 4, by - 6);
         }
 
-        // Center vertical line (blue, from crown to chin)
+        // Center vertical line (green, from crown to chin)
         if (crown && chin && faceDetected) {
             const cx = ((crown.x + chin.x) / 2) * sx;
             const crownScreenY = crown.y * sy;
             const chinScreenY = chin.y * sy;
 
-            // Blue vertical center line
-            ctx.strokeStyle = '#3b82f6';
-            ctx.lineWidth = 1.5;
+            // Green vertical center line
+            ctx.strokeStyle = '#00e676';
+            ctx.lineWidth = 2;
             ctx.setLineDash([4, 3]);
             ctx.beginPath(); ctx.moveTo(cx, crownScreenY); ctx.lineTo(cx, chinScreenY); ctx.stroke();
             ctx.setLineDash([]);
 
             // Crown dot + label
-            ctx.beginPath(); ctx.arc(cx, crownScreenY, 5, 0, Math.PI * 2);
-            ctx.fillStyle = '#3b82f6'; ctx.fill();
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
-            ctx.font = 'bold 10px sans-serif';
-            ctx.fillStyle = '#3b82f6';
-            ctx.fillText('정수리', cx + 10, crownScreenY + 4);
+            ctx.beginPath(); ctx.arc(cx, crownScreenY, 6, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff4d4d'; ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.font = 'bold 12px sans-serif';
+            ctx.fillStyle = '#ff4d4d';
+            ctx.fillText('정수리', cx + 12, crownScreenY + 4);
 
             // Chin dot + label
-            ctx.beginPath(); ctx.arc(cx, chinScreenY, 5, 0, Math.PI * 2);
-            ctx.fillStyle = '#3b82f6'; ctx.fill();
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
-            ctx.fillStyle = '#3b82f6';
-            ctx.fillText('턱끝', cx + 10, chinScreenY + 4);
+            ctx.beginPath(); ctx.arc(cx, chinScreenY, 6, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff4d4d'; ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = '#ff4d4d';
+            ctx.fillText('턱끝', cx + 12, chinScreenY + 4);
         }
     };
 
@@ -287,16 +304,69 @@ export default function PassportAnalyzer() {
 
     // ==================== RENDER ====================
     return (
-        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center justify-center max-w-6xl mx-auto py-10 px-4">
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center justify-center max-w-6xl mx-auto py-6 px-4">
+
+            {/* HELP MODAL */}
+            {showHelp && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-6" onClick={() => setShowHelp(false)}>
+                    <div className="bg-white rounded-[40px] w-full max-w-md p-8 relative animate-in fade-in zoom-in duration-300" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setShowHelp(false)} className="absolute top-6 right-6 size-10 bg-gray-100 rounded-full flex items-center justify-center">
+                            <span className="material-symbols-outlined">close</span>
+                        </button>
+                        <h3 className="text-2xl font-black mb-6">📸 사용법 가이드</h3>
+                        <div className="space-y-6 text-zinc-600 font-bold">
+                            <div className="flex gap-4">
+                                <div className="size-8 bg-blue-500 rounded-lg flex items-center justify-center text-white shrink-0">1</div>
+                                <p>정면 사진을 불러오세요.</p>
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="size-8 bg-orange-500 rounded-lg flex items-center justify-center text-white shrink-0">2</div>
+                                <p>화면를 터치해 <b>정수리</b>와 <b>턱끝</b> 위치를 정확히 찍어주세요.</p>
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="size-8 bg-sky-500 rounded-lg flex items-center justify-center text-white shrink-0">3</div>
+                                <p><b>배경 하얗게</b> 버튼을 눌러 배경을 제거하세요.</p>
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="size-8 bg-purple-500 rounded-lg flex items-center justify-center text-white shrink-0">4</div>
+                                <p><b>3,900원 결제 후 다운로드</b>를 눌러 파일을 받으세요!</p>
+                            </div>
+                        </div>
+                        <button onClick={() => setShowHelp(false)} className="w-full mt-10 h-16 bg-black text-white rounded-2xl font-black text-lg">알겠습니다!</button>
+                    </div>
+                </div>
+            )}
+
+            {/* INITIAL POPUP */}
+            {showInitialPopup && (
+                <div className="fixed inset-0 bg-black/40 z-[90] flex items-center justify-center p-6 pointer-events-none">
+                    <div className="bg-blue-600 text-white rounded-3xl p-6 shadow-2xl animate-bounce-slow pointer-events-auto">
+                        <p className="font-black text-lg text-center leading-tight">
+                            분석이 완료되었습니다!<br />
+                            <span className="text-blue-200 text-sm">먼저 정수리와 턱끝을 설정해주세요.</span>
+                        </p>
+                        <button onClick={() => setShowInitialPopup(false)} className="w-full mt-4 h-12 bg-white text-blue-600 rounded-xl font-black">확인</button>
+                    </div>
+                </div>
+            )}
 
             {/* LEFT: Photo Source Card */}
             <div className="w-full max-w-[420px] lg:flex-shrink-0 z-10">
-                <div className="bg-[#2d2d2d] p-5 rounded-[40px] shadow-2xl relative overflow-hidden ring-8 ring-white/20">
+                <div className="bg-[#2d2d2d] p-4 lg:p-5 rounded-[40px] shadow-2xl relative overflow-hidden ring-4 lg:ring-8 ring-white/20">
                     <div className="relative aspect-[3/4] rounded-[30px] overflow-hidden bg-black/20 flex flex-col">
-                        {!fileUrl ? (
+                        {!fileUrl || isFileLoading ? (
                             <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-                                <span className="material-symbols-outlined text-6xl text-white/10 mb-4 block">image</span>
-                                <p className="text-sm text-white/30 font-bold uppercase tracking-widest">No Image</p>
+                                {isFileLoading ? (
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="size-12 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
+                                        <p className="text-white font-black text-lg animate-pulse">사진 불러오는 중...</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined text-6xl text-white/10 mb-4 block">image</span>
+                                        <p className="text-sm text-white/30 font-bold uppercase tracking-widest">No Image</p>
+                                    </>
+                                )}
                             </div>
                         ) : (
                             <div className="relative flex-1">
@@ -314,23 +384,21 @@ export default function PassportAnalyzer() {
                                 />
                                 <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-10" />
 
-                                {/* "얼굴 찾는중..." overlay during detection */}
                                 {isDetecting && (
-                                    <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center z-30 pb-6">
-                                        <div className="bg-black/70 backdrop-blur-sm text-white px-5 py-2.5 rounded-full font-bold text-sm shadow-lg flex items-center gap-2">
-                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                            얼굴 찾는중...
+                                    <div className="absolute inset-0 flex items-center justify-center z-30 bg-black/20 backdrop-blur-[2px]">
+                                        <div className="bg-black/80 text-white px-6 py-3 rounded-full font-black text-base shadow-lg flex items-center gap-3">
+                                            <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin" />
+                                            데이터 분석 중...
                                         </div>
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {/* Bottom instruction overlay */}
                         {mode !== 'none' && (
-                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40">
-                                <div className="bg-white text-black px-6 py-3 rounded-full font-black text-xs shadow-2xl animate-bounce border-2 border-[#f6ab1a]">
-                                    {mode === 'crown' ? '📸 정수리를 터치하세요' : '📸 턱 끝을 터치하세요'}
+                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 w-[80%]">
+                                <div className="bg-white text-black px-6 py-4 rounded-3xl font-black text-base shadow-2xl animate-bounce border-4 border-[#f6ab1a] text-center">
+                                    {mode === 'crown' ? '📸 머리 맨 위(정수리)를 터치!' : '📸 턱 끝을 터치하세요!'}
                                 </div>
                             </div>
                         )}
@@ -340,80 +408,93 @@ export default function PassportAnalyzer() {
 
             {/* RIGHT: Phone Mockup */}
             <div className="w-full max-w-[340px] lg:flex-shrink-0">
-                <div className="bg-black p-4 rounded-[65px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border-[8px] border-[#333] relative w-full">
+                <div className="bg-black p-4 rounded-[65px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border-[8px] border-[#333] relative w-full h-[680px]">
 
-                    <div className="bg-white rounded-[55px] overflow-hidden aspect-[9/19] flex flex-col relative shadow-inner">
-                        {/* Dynamic Island with preview label */}
+                    <div className="bg-white rounded-[55px] overflow-hidden h-full flex flex-col relative shadow-inner">
                         <div className="absolute top-2 left-1/2 -translate-x-1/2 w-36 h-7 bg-black rounded-full z-20 flex items-center justify-center px-3">
-                            <p className="text-white text-[9px] font-bold tracking-tight">미리보기 (413×531)</p>
-                            <div className="size-1 rounded-full bg-blue-500/50 absolute right-3" />
+                            <p className="text-white text-[10px] font-black tracking-tight">미리보기 (413×531)</p>
+                            <div className="size-1.5 rounded-full bg-blue-500 absolute right-3 animate-pulse" />
                         </div>
 
-                        {/* Phone Screen */}
-                        <div className="flex-1 flex flex-col pt-12 p-5 overflow-y-auto">
+                        {/* Phone Screen - Minimized scroll */}
+                        <div className="flex-1 flex flex-col pt-12 px-6 pb-6 overflow-hidden">
 
-                            {/* TOP: Preview image right below Dynamic Island */}
-                            <div className="flex flex-col items-center mb-4">
-                                <div className="w-full bg-gray-50 rounded-2xl border-2 border-gray-200 overflow-hidden shadow-sm relative">
+                            {/* PREVIEW CONTAINER */}
+                            <div className="flex flex-col items-center mb-6 grow-0 shrink-0">
+                                <div className="w-full bg-gray-50 rounded-[2.5rem] border-4 border-gray-100 overflow-hidden shadow-sm relative aspect-[413/531]">
                                     {previewUrl ? (
-                                        <img src={previewUrl} className="w-full aspect-[413/531] object-cover" alt="preview" />
+                                        <img src={previewUrl} className="w-full h-full object-cover" alt="preview" />
                                     ) : (
-                                        <div className="w-full aspect-[413/531] flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
-                                            <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">photo_camera</span>
-                                            <p className="text-xs text-gray-400 font-bold">미리보기</p>
+                                        <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-50">
+                                            <span className="material-symbols-outlined text-5xl text-zinc-200 mb-3 block">photo_camera</span>
+                                            <p className="text-sm text-zinc-300 font-black">사진을 불러오세요</p>
                                         </div>
                                     )}
                                     {isRemovingBg && (
-                                        <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
-                                            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                        <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center gap-4 animate-in fade-in duration-300">
+                                            <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                            <p className="font-black text-blue-600 text-lg">배경 제거 중...</p>
                                         </div>
                                     )}
                                 </div>
+                                <div className="text-center mt-3">
+                                    <p className="text-xs font-black text-zinc-400">규격 미리보기 (413×531)</p>
+                                </div>
                             </div>
 
-                            {/* Action Buttons */}
-                            <div className="space-y-2 w-full">
+                            {/* Action Buttons - Optimized for size */}
+                            <div className="space-y-3 w-full mt-auto">
                                 {!fileUrl ? (
-                                    <label className="h-11 w-full bg-blue-500 rounded-2xl cursor-pointer shadow-[0_4px_0_0_#1d4ed8] active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center text-white font-black text-[11px] tracking-wider gap-2 group">
-                                        <span className="material-symbols-outlined text-sm group-hover:animate-bounce">cloud_upload</span>
-                                        사진 불러오기
-                                        <input type="file" className="hidden" accept="image/*" onChange={handleFile} />
-                                    </label>
+                                    <div className="space-y-3">
+                                        <label className="h-16 w-full bg-blue-600 hover:bg-blue-700 rounded-3xl cursor-pointer shadow-[0_6px_0_0_#1d4ed8] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center text-white font-black text-lg tracking-wider gap-3 group">
+                                            <span className="material-symbols-outlined text-2xl group-hover:animate-bounce">cloud_upload</span>
+                                            사진 불러오기
+                                            <input type="file" className="hidden" accept="image/*" onChange={handleFile} />
+                                        </label>
+                                        <button onClick={() => setShowHelp(true)} className="h-14 w-full bg-zinc-100 hover:bg-zinc-200 rounded-2xl flex items-center justify-center text-zinc-500 font-bold text-sm transition-colors border-2 border-zinc-200">
+                                            사용법 보기
+                                        </button>
+                                    </div>
                                 ) : (
                                     <>
-                                        <button
-                                            onClick={removeBg}
-                                            disabled={isRemovingBg}
-                                            className="h-11 w-full bg-[#52a4ff] rounded-2xl shadow-[0_4px_0_0_#2b82e6] active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center text-white font-black text-[11px] tracking-wider gap-2 disabled:opacity-50"
-                                        >
-                                            <span className="material-symbols-outlined text-sm">auto_fix_high</span>
-                                            {isRemovingBg ? '처리 중...' : '배경 하얗게'}
-                                        </button>
+                                        <div className="grid grid-cols-1 gap-2.5">
+                                            <button
+                                                onClick={() => setMode('crown')}
+                                                className="h-14 w-full bg-[#f6ab1a] rounded-2xl shadow-[0_4px_0_0_#d97706] active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center text-white font-black text-sm tracking-wider gap-2"
+                                            >
+                                                <span className="material-symbols-outlined text-xl">ads_click</span>
+                                                정수리 턱끝 설정
+                                            </button>
 
-                                        <button
-                                            onClick={() => setMode('crown')}
-                                            className="h-11 w-full bg-[#f6ab1a] rounded-2xl shadow-[0_4px_0_0_#d97706] active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center text-white font-black text-[11px] tracking-wider gap-2"
-                                        >
-                                            <span className="material-symbols-outlined text-sm">ads_click</span>
-                                            정수리 턱끝 설정
-                                        </button>
+                                            <button
+                                                onClick={removeBg}
+                                                disabled={isRemovingBg || !crown}
+                                                className="h-14 w-full bg-[#52a4ff] rounded-2xl shadow-[0_4px_0_0_#2b82e6] active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center text-white font-black text-sm tracking-wider gap-2 disabled:opacity-40"
+                                            >
+                                                <span className="material-symbols-outlined text-xl">auto_fix_high</span>
+                                                배경 하얗게 처리
+                                            </button>
 
-                                        <button
-                                            onClick={download}
-                                            disabled={!crown || !chin}
-                                            className="h-11 w-full bg-[#a352ff] rounded-2xl shadow-[0_4px_0_0_#7c2be6] active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center text-white font-black text-[11px] tracking-wider gap-2 disabled:opacity-40"
-                                        >
-                                            <span className="material-symbols-outlined text-sm">check_circle</span>
-                                            여권 규격 완료!
-                                        </button>
+                                            <button
+                                                onClick={download}
+                                                disabled={!crown || !chin || isRemovingBg}
+                                                className="h-16 w-full bg-[#a352ff] rounded-3xl shadow-[0_6px_0_0_#7c2be6] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center text-white font-black text-lg tracking-wider gap-2 disabled:opacity-40"
+                                            >
+                                                <span className="material-symbols-outlined text-2xl">payments</span>
+                                                3,900원 결제 후 다운로드
+                                            </button>
+                                        </div>
 
                                         {/* Fine Tuning */}
-                                        <div className="pt-2 border-t border-zinc-100 flex gap-2">
-                                            <button onClick={() => nudge(-1)} className="flex-1 h-9 bg-zinc-50 rounded-xl flex items-center justify-center text-zinc-400 active:bg-zinc-100 border border-zinc-100">
-                                                <span className="material-symbols-outlined text-lg">expand_less</span>
+                                        <div className="flex gap-2 items-center">
+                                            <button onClick={() => nudge(-1)} className="flex-1 h-12 bg-zinc-100 rounded-2xl flex items-center justify-center text-zinc-400 active:bg-zinc-200 border-2 border-zinc-200 transition-colors">
+                                                <span className="material-symbols-outlined text-2xl">keyboard_arrow_up</span>
                                             </button>
-                                            <button onClick={() => nudge(1)} className="flex-1 h-9 bg-zinc-50 rounded-xl flex items-center justify-center text-zinc-400 active:bg-zinc-100 border border-zinc-100">
-                                                <span className="material-symbols-outlined text-lg">expand_more</span>
+                                            <button onClick={() => nudge(1)} className="flex-1 h-12 bg-zinc-100 rounded-2xl flex items-center justify-center text-zinc-400 active:bg-zinc-200 border-2 border-zinc-200 transition-colors">
+                                                <span className="material-symbols-outlined text-2xl">keyboard_arrow_down</span>
+                                            </button>
+                                            <button onClick={() => setShowHelp(true)} className="size-12 bg-zinc-50 rounded-full flex items-center justify-center text-zinc-400 border-2 border-zinc-100">
+                                                <span className="material-symbols-outlined text-xl">help</span>
                                             </button>
                                         </div>
                                     </>
@@ -422,7 +503,7 @@ export default function PassportAnalyzer() {
                         </div>
 
                         {/* iPhone Bottom Bar */}
-                        <div className="h-1.5 w-32 bg-zinc-200 rounded-full mx-auto mb-4 mt-auto" />
+                        <div className="h-1.5 w-32 bg-zinc-200 rounded-full mx-auto mb-5 shrink-0" />
                     </div>
                 </div>
             </div>
