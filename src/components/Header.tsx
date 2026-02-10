@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 const Header: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const getCookie = (name: string) => {
@@ -17,12 +18,13 @@ const Header: React.FC = () => {
 
     if (token || role) {
       setIsLoggedIn(true);
+      if (role === 'admin') setIsAdmin(true);
     }
   }, []);
 
   return (
     <header className="flex items-center justify-between px-6 md:px-20 py-6">
-      <Link href="/photo" className="flex items-center gap-3 cursor-pointer">
+      <Link href={isAdmin ? "/" : "/photo"} className="flex items-center gap-3 cursor-pointer">
         <img
           src="/logo/1_BLACK.png?v=2"
           alt="Yeonhui Studio"
@@ -31,6 +33,9 @@ const Header: React.FC = () => {
       </Link>
 
       <div className="hidden md:flex items-center gap-2 bg-white/30 backdrop-blur-md px-2 py-2 rounded-full border border-white/40 shadow-sm">
+        {isAdmin && (
+          <Link className="text-sm font-bold text-black/70 hover:text-black px-6 py-2 rounded-full transition-colors bg-yellow-400/20" href="/">허브</Link>
+        )}
         <Link className="text-sm font-bold text-black/70 hover:text-black px-6 py-2 rounded-full transition-colors" href="#">홈</Link>
         <Link className="text-sm font-black text-black bg-white px-6 py-2 rounded-full shadow-sm" href="#branches">지점 예약</Link>
         <Link className="text-sm font-bold text-black/70 hover:text-black px-6 py-2 rounded-full transition-colors" href="#demo">직접 해보기</Link>
