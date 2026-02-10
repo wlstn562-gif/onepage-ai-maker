@@ -20,6 +20,7 @@ interface Artifact {
 
 export default function StudioPage() {
     const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
+    const [consoleMode, setConsoleMode] = useState<'team' | 'auto' | 'council'>('team');
     const [chatInput, setChatInput] = useState('');
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [artifacts, setArtifacts] = useState<Artifact[]>([]);
@@ -36,7 +37,8 @@ export default function StudioPage() {
     const activeTeam = TEAMS.find(t => t.id === activeTeamId);
 
     const handleSendMessage = async () => {
-        if (!chatInput.trim() || !activeTeamId) return;
+        if (!chatInput.trim()) return;
+        if (consoleMode === 'team' && !activeTeamId) return;
 
         const userMsg: ChatMessage = { role: 'user', text: chatInput };
         setMessages(prev => [...prev, userMsg]);
@@ -50,15 +52,21 @@ export default function StudioPage() {
                 body: JSON.stringify({
                     teamId: activeTeamId,
                     message: userMsg.text,
-                    history: messages
+                    history: messages,
+                    mode: consoleMode
                 })
             });
             const data = await res.json();
 
+            // Handle Auto-Routing: Update team ID if changed by AI
+            if (consoleMode === 'auto' && data.teamId && data.teamId !== activeTeamId) {
+                setActiveTeamId(data.teamId);
+            }
+
             const aiMsg: ChatMessage = {
                 role: 'assistant',
                 text: data.response,
-                teamId: activeTeamId
+                teamId: data.teamId
             };
             setMessages(prev => [...prev, aiMsg]);
 
@@ -104,15 +112,27 @@ export default function StudioPage() {
 
                     {/* Mode Selectors */}
                     <div className="flex items-center gap-1 bg-zinc-900 p-1 rounded-lg">
-                        <button className="flex items-center gap-2 rounded-md bg-zinc-800 px-3 py-1.5 text-sm font-medium text-white shadow-sm ring-1 ring-zinc-700">
+                        <button
+                            onClick={() => setConsoleMode('team')}
+                            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all ${consoleMode === 'team' ? 'bg-zinc-800 text-white shadow-sm ring-1 ring-zinc-700' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                                }`}
+                        >
                             <LayoutGrid size={16} />
                             팀 선택
                         </button>
-                        <button className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50">
+                        <button
+                            onClick={() => setConsoleMode('auto')}
+                            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all ${consoleMode === 'auto' ? 'bg-zinc-800 text-white shadow-sm ring-1 ring-zinc-700' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                                }`}
+                        >
                             <Bot size={16} />
                             자동 라우팅
                         </button>
-                        <button className="flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-800/50">
+                        <button
+                            onClick={() => setConsoleMode('council')}
+                            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all ${consoleMode === 'council' ? 'bg-zinc-800 text-white shadow-sm ring-1 ring-zinc-700' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                                }`}
+                        >
                             <Users size={16} />
                             전체 회의
                         </button>
@@ -183,7 +203,18 @@ export default function StudioPage() {
                         {/* Chat Header */}
                         <div className="flex h-12 items-center justify-between border-b border-zinc-800 bg-zinc-900/50 px-6 backdrop-blur-sm">
                             <div className="flex items-center gap-2 text-sm font-medium text-zinc-300">
-                                {activeTeam ? (
+                                {consoleMode === 'council' ? (
+                                    <>
+                                        <span className="text-yellow-500 animate-pulse">●</span>
+                                        전체 전문가 위원회 회의 중
+                                    </>
+                                ) : consoleMode === 'auto' ? (
+                                    <>
+                                        <span className="text-blue-500 animate-pulse">●</span>
+                                        지능형 자동 라우팅 활성화됨
+                                        {activeTeam && <span className="ml-2 text-zinc-500">({activeTeam.name} 연결됨)</span>}
+                                    </>
+                                ) : activeTeam ? (
                                     <>
                                         <span className={`${activeTeam.color}`}>●</span>
                                         {activeTeam.name}과 대화 중
