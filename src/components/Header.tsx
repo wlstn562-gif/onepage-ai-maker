@@ -53,9 +53,9 @@ const Header: React.FC = () => {
           </Link>
         </div>
       ) : (
-        <button className="flex min-w-[100px] items-center justify-center rounded-2xl h-12 px-6 bg-gradient-to-br from-[#FFB200] to-[#FF8A00] text-white text-sm font-black shadow-[0_6px_0_0_#E67E00] hover:brightness-110 transition-all active:translate-y-1 active:shadow-none">
+        <Link href="/login" className="flex min-w-[100px] items-center justify-center rounded-2xl h-12 px-6 bg-gradient-to-br from-[#FFB200] to-[#FF8A00] text-white text-sm font-black shadow-[0_6px_0_0_#E67E00] hover:brightness-110 transition-all active:translate-y-1 active:shadow-none">
           로그인
-        </button>
+        </Link>
       )}
     </header>
   );
