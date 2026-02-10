@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yeonhui Passport Analyzer - Standalone</title>
+    
+    <!-- CDNs -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Icons & Fonts -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #fefce8; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // Note: Heavy libraries like face-api and @imgly/background-removal 
+        // usually require local models/wasm. This standalone version 
+        // implements the UI and structure. Functional background removal 
+        // in a single HTML file without a server is restricted by CORS.
+
+        const clamp = (n, a = 0, b = 1) => Math.max(a, Math.min(b, n));
+
+        function PassportAnalyzer() {
+            const [fileUrl, setFileUrl] = useState(null);
+            const [imgSize, setImgSize] = useState(null);
+            const [mode, setMode] = useState('none');
+            const [crown, setCrown] = useState(null);
+            const [chin, setChin] = useState(null);
+            const [faceBox, setFaceBox] = useState(null);
+            const [isRemovingBg, setIsRemovingBg] = useState(false);
+            const [isDetecting, setIsDetecting] = useState(false);
+            const [previewUrl, setPreviewUrl] = useState(null);
+            const [faceDetected, setFaceDetected] = useState(false);
+
+            const imgRef = useRef(null);
+            const canvasRef = useRef(null);
+
+            const OUT_W = 413, OUT_H = 531;
+            const TARGET_HEAD_HEIGHT = 380;
+            const TARGET_TOP_PX = 30;
+
+            const detectFaceMock = () => {
+                setIsDetecting(true);
+                // Simulation for standalone view
+                setTimeout(() => {
+                    const w = imgRef.current.naturalWidth;
+                    const h = imgRef.current.naturalHeight;
+                    setFaceBox({ x: w*0.3, y: h*0.2, w: w*0.4, h: h*0.5 });
+                    setCrown({ x: w*0.5, y: h*0.25 });
+                    setChin({ x: w*0.5, y: h*0.75 });
+                    setFaceDetected(true);
+                    setIsDetecting(false);
+                }, 1500);
+            };
+
+            const generatePreview = useCallback(() => {
+                if (!imgRef.current || !crown || !chin) { setPreviewUrl(null); return; }
+                const headLen = Math.abs(chin.y - crown.y);
+                if (headLen < 1) return;
+                const scale = TARGET_HEAD_HEIGHT / headLen;
+                const centerX_src = (crown.x + chin.x) / 2;
+                const dx = (OUT_W / 2) - centerX_src * scale;
+                const dy = TARGET_TOP_PX - crown.y * scale;
+                const canvas = document.createElement('canvas');
+                canvas.width = OUT_W; canvas.height = OUT_H;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+                ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, OUT_W, OUT_H);
+                ctx.drawImage(imgRef.current, dx, dy, imgRef.current.naturalWidth * scale, imgRef.current.naturalHeight * scale);
+
+                ctx.setLineDash([6, 4]);
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = '#3b82f6';
+                ctx.beginPath(); ctx.moveTo(0, TARGET_TOP_PX); ctx.lineTo(OUT_W, TARGET_TOP_PX); ctx.stroke();
+                const chinLineY = TARGET_TOP_PX + TARGET_HEAD_HEIGHT;
+                ctx.beginPath(); ctx.moveTo(0, chinLineY); ctx.lineTo(OUT_W, chinLineY); ctx.stroke();
+                
+                setPreviewUrl(canvas.toDataURL('image/jpeg', 0.92));
+            }, [crown, chin, fileUrl]);
+
+            useEffect(() => { generatePreview(); }, [generatePreview]);
+
+            const handleFile = (e) => {
+                const f = e.target.files?.[0]; if (!f) return;
+                setFileUrl(URL.createObjectURL(f));
+                setCrown(null); setChin(null); setFaceBox(null);
+                setMode('none'); setPreviewUrl(null); setFaceDetected(false);
+            };
+
+            const nudge = (dir) => {
+                if (!crown || !chin) return;
+                const headLen = Math.abs(chin.y - crown.y);
+                const step = Math.max(1, Math.round(headLen * 0.01));
+                setCrown({ ...crown, y: crown.y + dir * step });
+                setChin({ ...chin, y: chin.y + dir * step });
+            };
+
+            const drawCanvas = () => {
+                const img = imgRef.current, c = canvasRef.current;
+                if (!img || !c || !imgSize) return;
+                const rect = img.getBoundingClientRect();
+                c.width = rect.width; c.height = rect.height;
+                const ctx = c.getContext('2d'); if (!ctx) return;
+                const sx = c.width / img.naturalWidth, sy = c.height / img.naturalHeight;
+
+                if (faceBox && faceDetected) {
+                    const bx = faceBox.x * sx, by = faceBox.y * sy;
+                    const bw = faceBox.w * sx, bh = faceBox.h * sy;
+                    ctx.strokeStyle = '#00e676';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(bx, by, bw, bh);
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.fillStyle = '#00e676';
+                    ctx.fillText('얼굴영역', bx + 4, by - 6);
+                }
+
+                if (crown && chin && faceDetected) {
+                    const cx = ((crown.x + chin.x) / 2) * sx;
+                    const crownScreenY = crown.y * sy;
+                    const chinScreenY = chin.y * sy;
+                    ctx.strokeStyle = '#3b82f6';
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([4, 3]);
+                    ctx.beginPath(); ctx.moveTo(cx, crownScreenY); ctx.lineTo(cx, chinScreenY); ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.beginPath(); ctx.arc(cx, crownScreenY, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#3b82f6'; ctx.fill();
+                    ctx.font = 'bold 10px sans-serif';
+                    ctx.fillText('정수리', cx + 10, crownScreenY + 4);
+                    ctx.beginPath(); ctx.arc(cx, chinScreenY, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#3b82f6'; ctx.fill();
+                    ctx.fillText('턱끝', cx + 10, chinScreenY + 4);
+                }
+            };
+
+            useEffect(() => { drawCanvas(); }, [crown, chin, faceBox, faceDetected, fileUrl, imgSize]);
+
+            return (
+                <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center justify-center max-w-6xl mx-auto py-10 px-4">
+                    {/* LEFT Col */}
+                    <div className="w-full max-w-[420px] lg:flex-shrink-0 z-10">
+                        <div className="bg-[#2d2d2d] p-5 rounded-[40px] shadow-2xl relative overflow-hidden ring-8 ring-white/20">
+                            <div className="relative aspect-[3/4] rounded-[30px] overflow-hidden bg-black/20 flex flex-col">
+                                {!fileUrl ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
+                                        <span className="material-symbols-outlined text-6xl text-white/10 mb-4">image</span>
+                                        <p className="text-sm text-white/30 font-bold uppercase tracking-widest">No Image</p>
+                                    </div>
+                                ) : (
+                                    <div className="relative flex-1">
+                                        <img
+                                            ref={imgRef} src={fileUrl} alt="source"
+                                            className="w-full h-full object-contain"
+                                            onLoad={() => {
+                                                setImgSize({ w: imgRef.current.naturalWidth, h: imgRef.current.naturalHeight });
+                                                detectFaceMock();
+                                            }}
+                                            onClick={(e) => {
+                                                const r = e.currentTarget.getBoundingClientRect();
+                                                const nx = clamp((e.clientX - r.left) / r.width, 0, 1) * imgRef.current.naturalWidth;
+                                                const ny = clamp((e.clientY - r.top) / r.height, 0, 1) * imgRef.current.naturalHeight;
+                                                if (mode === 'crown') { setCrown({ x: nx, y: ny }); setMode('chin'); }
+                                                else if (mode === 'chin') { setChin({ x: nx, y: ny }); setMode('none'); }
+                                            }}
+                                        />
+                                        <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-10" />
+                                        {isDetecting && (
+                                            <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center z-30 pb-6">
+                                                <div className="bg-black/70 backdrop-blur-sm text-white px-5 py-2.5 rounded-full font-bold text-sm shadow-lg flex items-center gap-2">
+                                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                    얼굴 찾는중...
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {mode !== 'none' && (
+                                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40">
+                                        <div className="bg-white text-black px-6 py-3 rounded-full font-black text-xs shadow-2xl animate-bounce border-2 border-[#f6ab1a]">
+                                            {mode === 'crown' ? '📸 정수리를 터치하세요' : '📸 턱 끝을 터치하세요'}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* RIGHT Col */}
+                    <div className="w-full max-w-[340px] lg:flex-shrink-0">
+                        <div className="bg-black p-4 rounded-[65px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border-[8px] border-[#333] relative w-full">
+                            <div className="bg-white rounded-[55px] overflow-hidden aspect-[9/19] flex flex-col relative shadow-inner">
+                                <div className="absolute top-2 left-1/2 -translate-x-1/2 w-36 h-7 bg-black rounded-full z-20 flex items-center justify-center px-3">
+                                    <p className="text-white text-[9px] font-bold tracking-tight">미리보기 (413×531)</p>
+                                    <div className="size-1 rounded-full bg-blue-500/50 absolute right-3" />
+                                </div>
+                                <div className="flex-1 flex flex-col pt-12 p-5 overflow-y-auto">
+                                    <div className="flex flex-col items-center mb-4">
+                                        <div className="w-full bg-gray-50 rounded-2xl border-2 border-gray-200 overflow-hidden shadow-sm relative">
+                                            {previewUrl ? (
+                                                <img src={previewUrl} className="w-full aspect-[413/531] object-cover" />
+                                            ) : (
+                                                <div className="w-full aspect-[413/531] flex flex-col items-center justify-center bg-gray-100">
+                                                    <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">photo_camera</span>
+                                                    <p className="text-xs text-gray-400 font-bold">미리보기</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="text-center mt-2">
+                                            <p className="text-[10px] font-black text-zinc-600">미리보기 (413×531)</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2 w-full">
+                                        {!fileUrl ? (
+                                            <label className="h-11 w-full bg-blue-500 rounded-2xl cursor-pointer shadow-[0_4px_0_0_#1d4ed8] flex items-center justify-center text-white font-black text-[11px] tracking-wider gap-2">
+                                                <span className="material-symbols-outlined text-sm">cloud_upload</span>
+                                                사진 불러오기
+                                                <input type="file" className="hidden" accept="image/*" onChange={handleFile} />
+                                            </label>
+                                        ) : (
+                                            <>
+                                                <button className="h-11 w-full bg-[#52a4ff] rounded-2xl shadow-[0_4px_0_0_#2b82e6] flex items-center justify-center text-white font-black text-[11px] tracking-wider gap-2">
+                                                    <span className="material-symbols-outlined text-sm">auto_fix_high</span>
+                                                    배경 하얗게
+                                                </button>
+                                                <button onClick={() => setMode('crown')} className="h-11 w-full bg-[#f6ab1a] rounded-2xl shadow-[0_4px_0_0_#d97706] flex items-center justify-center text-white font-black text-[11px] tracking-wider gap-2">
+                                                    <span className="material-symbols-outlined text-sm">ads_click</span>
+                                                    정수리 턱끝 설정
+                                                </button>
+                                                <button disabled={!crown} className="h-11 w-full bg-[#a352ff] rounded-2xl shadow-[0_4px_0_0_#7c2be6] flex items-center justify-center text-white font-black text-[11px] tracking-wider gap-2 opacity-50">
+                                                    <span className="material-symbols-outlined text-sm">check_circle</span>
+                                                    여권 규격 완료!
+                                                </button>
+                                                <div className="pt-2 border-t border-zinc-100 flex gap-2">
+                                                    <button onClick={() => nudge(-1)} className="flex-1 h-9 bg-zinc-50 rounded-xl flex items-center justify-center text-zinc-400 border border-zinc-100"><span className="material-symbols-outlined text-lg">expand_less</span></button>
+                                                    <button onClick={() => nudge(1)} className="flex-1 h-9 bg-zinc-50 rounded-xl flex items-center justify-center text-zinc-400 border border-zinc-100"><span className="material-symbols-outlined text-lg">expand_more</span></button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="h-1.5 w-32 bg-zinc-200 rounded-full mx-auto mb-4 mt-auto" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<PassportAnalyzer />);
+    </script>
+</body>
+</html>

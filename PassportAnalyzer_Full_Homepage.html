@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>연희스튜디오 - AI 여권사진</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#FFC107",
+                        "accent-pink": "#FF6B6B",
+                        "accent-blue": "#4DABF7",
+                        "accent-green": "#51CF66",
+                        "accent-purple": "#BE4BDB",
+                        "background-vibrant": "#FFD43B",
+                        "background-light": "#F9FAFB",
+                        "background-dark": "#121212",
+                        "card-dark": "#1E1E1E",
+                        "accent-black": "#1A1A1A",
+                    },
+                    borderRadius: {
+                        DEFAULT: "1.5rem",
+                        "large": "2rem",
+                        "2xl": "1.5rem",
+                        "3xl": "2.5rem",
+                        "4xl": "3rem",
+                    },
+                    boxShadow: {
+                        "3d-black": "0 6px 0 0 #000000",
+                        "3d-yellow": "0 4px 0 0 #D9A406",
+                        "3d-pink": "0 8px 0 0 #E03131",
+                        "3d-pink-sm": "0 4px 0 0 #E03131",
+                        "3d-blue": "0 6px 0 0 #1971C2",
+                        "3d-purple": "0 6px 0 0 #862E9C",
+                        "3d-green": "0 6px 0 0 #2F9E44",
+                        "card": "0 20px 50px rgba(0,0,0,0.1)",
+                    },
+                }
+            }
+        }
+    </script>
+
+    <!-- React & Babel -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Icons & Fonts -->
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&display=swap"
+        rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #fff0c1;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .layout-container {
+            background-color: #fff0c1;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(-5%) rotate(12deg);
+            }
+
+            50% {
+                transform: translateY(0) rotate(12deg);
+            }
+        }
+
+        .animate-bounce-slow {
+            animation: bounce 3s infinite;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        const clamp = (n, a = 0, b = 1) => Math.max(a, Math.min(b, n));
+
+        // --- PassportAnalyzer Component ---
+        function PassportAnalyzer() {
+            const [fileUrl, setFileUrl] = useState(null);
+            const [imgSize, setImgSize] = useState(null);
+            const [mode, setMode] = useState('none');
+            const [crown, setCrown] = useState(null);
+            const [chin, setChin] = useState(null);
+            const [faceBox, setFaceBox] = useState(null);
+            const [isRemovingBg, setIsRemovingBg] = useState(false);
+            const [isDetecting, setIsDetecting] = useState(false);
+            const [previewUrl, setPreviewUrl] = useState(null);
+            const [faceDetected, setFaceDetected] = useState(false);
+
+            const imgRef = useRef(null);
+            const canvasRef = useRef(null);
+
+            const OUT_W = 413, OUT_H = 531;
+            const TARGET_HEAD_HEIGHT = 380;
+            const TARGET_TOP_PX = 30;
+
+            const detectFaceMock = () => {
+                setIsDetecting(true);
+                setTimeout(() => {
+                    if (!imgRef.current) return;
+                    const w = imgRef.current.naturalWidth;
+                    const h = imgRef.current.naturalHeight;
+                    setFaceBox({ x: w * 0.3, y: h * 0.2, w: w * 0.4, h: h * 0.5 });
+                    setCrown({ x: w * 0.5, y: h * 0.25 });
+                    setChin({ x: w * 0.5, y: h * 0.75 });
+                    setFaceDetected(true);
+                    setIsDetecting(false);
+                }, 1500);
+            };
+
+            const generatePreview = useCallback(() => {
+                if (!imgRef.current || !crown || !chin) { setPreviewUrl(null); return; }
+                const headLen = Math.abs(chin.y - crown.y);
+                if (headLen < 1) return;
+                const scale = TARGET_HEAD_HEIGHT / headLen;
+                const centerX_src = (crown.x + chin.x) / 2;
+                const dx = (OUT_W / 2) - centerX_src * scale;
+                const dy = TARGET_TOP_PX - crown.y * scale;
+                const canvas = document.createElement('canvas');
+                canvas.width = OUT_W; canvas.height = OUT_H;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+                ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, OUT_W, OUT_H);
+                ctx.drawImage(imgRef.current, dx, dy, imgRef.current.naturalWidth * scale, imgRef.current.naturalHeight * scale);
+
+                ctx.setLineDash([6, 4]);
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = '#3b82f6';
+                ctx.beginPath(); ctx.moveTo(0, TARGET_TOP_PX); ctx.lineTo(OUT_W, TARGET_TOP_PX); ctx.stroke();
+                const chinLineY = TARGET_TOP_PX + TARGET_HEAD_HEIGHT;
+                ctx.beginPath(); ctx.moveTo(0, chinLineY); ctx.lineTo(OUT_W, chinLineY); ctx.stroke();
+
+                setPreviewUrl(canvas.toDataURL('image/jpeg', 0.92));
+            }, [crown, chin, fileUrl]);
+
+            useEffect(() => { generatePreview(); }, [generatePreview]);
+
+            const handleFile = (e) => {
+                const f = e.target.files?.[0]; if (!f) return;
+                setFileUrl(URL.createObjectURL(f));
+                setCrown(null); setChin(null); setFaceBox(null);
+                setMode('none'); setPreviewUrl(null); setFaceDetected(false);
+            };
+
+            const drawCanvas = () => {
+                const img = imgRef.current, c = canvasRef.current;
+                if (!img || !c || !imgSize) return;
+                const rect = img.getBoundingClientRect();
+                c.width = rect.width; c.height = rect.height;
+                const ctx = c.getContext('2d'); if (!ctx) return;
+                const sx = c.width / img.naturalWidth, sy = c.height / img.naturalHeight;
+
+                if (faceBox && faceDetected) {
+                    const bx = faceBox.x * sx, by = faceBox.y * sy;
+                    const bw = faceBox.w * sx, bh = faceBox.h * sy;
+                    ctx.strokeStyle = '#00e676';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(bx, by, bw, bh);
+                    // Corners
+                    const clen = 15;
+                    ctx.lineWidth = 4;
+                    ctx.beginPath(); ctx.moveTo(bx, by + clen); ctx.lineTo(bx, by); ctx.lineTo(bx + clen, by); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(bx + bw - clen, by); ctx.lineTo(bx + bw, by); ctx.lineTo(bx + bw, by + clen); ctx.stroke();
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.fillStyle = '#00e676';
+                    ctx.fillText('얼굴영역', bx + 4, by - 6);
+                }
+
+                if (crown && chin && faceDetected) {
+                    const cx = ((crown.x + chin.x) / 2) * sx;
+                    const crownY = crown.y * sy;
+                    const chinY = chin.y * sy;
+                    ctx.strokeStyle = '#3b82f6';
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([4, 3]);
+                    ctx.beginPath(); ctx.moveTo(cx, crownY); ctx.lineTo(cx, chinY); ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.beginPath(); ctx.arc(cx, crownY, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#3b82f6'; ctx.fill();
+                    ctx.beginPath(); ctx.arc(cx, chinY, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#3b82f6'; ctx.fill();
+                    ctx.font = 'bold 10px sans-serif';
+                    ctx.fillStyle = '#3b82f6';
+                    ctx.fillText('정수리', cx + 10, crownY + 4);
+                    ctx.fillText('턱끝', cx + 10, chinY + 4);
+                }
+            };
+
+            useEffect(() => { drawCanvas(); }, [crown, chin, faceBox, faceDetected, fileUrl, imgSize]);
+
+            return (
+                <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center justify-center max-w-6xl mx-auto">
+                    {/* Source Photo */}
+                    <div className="w-full max-w-[420px] lg:flex-shrink-0 z-10">
+                        <div className="bg-[#2d2d2d] p-5 rounded-[40px] shadow-2xl relative overflow-hidden ring-8 ring-white/20">
+                            <div className="relative aspect-[3/4] rounded-[30px] overflow-hidden bg-black/20 flex flex-col">
+                                {!fileUrl ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-white/10">
+                                        <span className="material-symbols-outlined text-6xl mb-4">image</span>
+                                        <p className="text-sm font-bold uppercase tracking-widest">No Image</p>
+                                    </div>
+                                ) : (
+                                    <div className="relative flex-1">
+                                        <img ref={imgRef} src={fileUrl} className="w-full h-full object-contain" onLoad={() => { setImgSize({ w: imgRef.current.naturalWidth, h: imgRef.current.naturalHeight }); detectFaceMock(); }} onClick={(e) => {
+                                            const r = e.currentTarget.getBoundingClientRect();
+                                            const nx = clamp((e.clientX - r.left) / r.width, 0, 1) * imgRef.current.naturalWidth;
+                                            const ny = clamp((e.clientY - r.top) / r.height, 0, 1) * imgRef.current.naturalHeight;
+                                            if (mode === 'crown') { setCrown({ x: nx, y: ny }); setMode('chin'); }
+                                            else if (mode === 'chin') { setChin({ x: nx, y: ny }); setMode('none'); }
+                                        }} />
+                                        <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-10" />
+                                        {isDetecting && (
+                                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/70 text-white px-5 py-2 rounded-full flex items-center gap-2 text-sm font-bold z-30">
+                                                <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                얼굴 찾는중...
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Phone Mockup */}
+                    <div className="w-full max-w-[340px]">
+                        <div className="bg-black p-4 rounded-[65px] shadow-2xl border-[8px] border-[#333] relative">
+                            <div className="bg-white rounded-[55px] overflow-hidden aspect-[9/19] flex flex-col relative">
+                                <div className="absolute top-2 left-1/2 -translate-x-1/2 w-36 h-7 bg-black rounded-full z-20 flex items-center justify-center">
+                                    <p className="text-white text-[9px] font-bold">미리보기 (413×531)</p>
+                                </div>
+                                <div className="flex-1 flex flex-col pt-12 p-5 overflow-y-auto">
+                                    <div className="w-full bg-gray-50 rounded-2xl border-2 border-gray-200 overflow-hidden mb-6">
+                                        {previewUrl ? <img src={previewUrl} className="w-full aspect-[413/531]" /> : <div className="w-full aspect-[413/531] flex flex-col items-center justify-center text-gray-300 bg-gray-100"><span className="material-symbols-outlined text-4xl mb-2">photo_camera</span><p className="text-xs font-bold">미리보기</p></div>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        {!fileUrl ? (
+                                            <label className="h-11 w-full bg-blue-500 rounded-2xl flex items-center justify-center text-white font-black text-xs cursor-pointer shadow-3d-blue active:translate-y-1 active:shadow-none transition-all">
+                                                사진 불러오기
+                                                <input type="file" className="hidden" accept="image/*" onChange={handleFile} />
+                                            </label>
+                                        ) : (
+                                            <>
+                                                <button className="h-11 w-full bg-[#52a4ff] rounded-2xl text-white font-black text-xs shadow-3d-blue">배경 하얗게</button>
+                                                <button onClick={() => setMode('crown')} className="h-11 w-full bg-[#f6ab1a] rounded-2xl text-white font-black text-xs shadow-3d-yellow">정수리 턱끝 설정</button>
+                                                <button className="h-11 w-full bg-[#a352ff] rounded-2xl text-white font-black text-xs opacity-50 shadow-3d-purple">규격 완료!</button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="h-1.5 w-32 bg-gray-200 rounded-full mx-auto mb-4" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // --- Layout Shell ---
+        function App() {
+            return (
+                <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
+                    <div className="layout-container flex h-full grow flex-col">
+
+                        {/* Header */}
+                        <header className="flex items-center justify-between px-6 md:px-20 py-10">
+                            <div className="flex items-center gap-3">
+                                <div className="h-12 w-auto flex items-center font-black text-2xl tracking-tighter">
+                                    YEONHUI STUDIO
+                                </div>
+                            </div>
+                            <div className="hidden md:flex items-center gap-2 bg-white/30 backdrop-blur-md px-2 py-2 rounded-full border border-white/40 shadow-sm">
+                                <a className="text-sm font-bold text-black/70 hover:text-black px-6 py-2" href="#">홈</a>
+                                <a className="text-sm font-black text-black bg-white px-6 py-2 rounded-full shadow-sm" href="#features">AI 여권사진</a>
+                                <a className="text-sm font-bold text-black/70 hover:text-black px-6 py-2" href="#demo">데모보기</a>
+                                <a className="text-sm font-bold text-black/70 hover:text-black px-6 py-2" href="#service">가격안내</a>
+                            </div>
+                            <button className="flex min-w-[100px] items-center justify-center rounded-2xl h-12 px-6 bg-black text-white text-sm font-bold shadow-3d-black">
+                                로그인
+                            </button>
+                        </header>
+
+                        <main className="flex-1 px-4 md:px-20 lg:px-40 pb-20">
+
+                            {/* Hero */}
+                            <section className="flex flex-col lg:flex-row gap-20 items-center justify-between mt-10">
+                                <div className="w-full max-w-[500px] relative group">
+                                    <div className="absolute inset-0 bg-white/30 rounded-[40px] blur-3xl -z-10"></div>
+                                    <div className="relative bg-white p-4 rounded-[40px] shadow-card border-[6px] border-white transform hover:rotate-2 transition-transform duration-500">
+                                        <div className="w-full aspect-[4/3] bg-gray-200 rounded-[30px] flex items-center justify-center">
+                                            <span className="material-symbols-outlined text-6xl text-gray-300">smart_toy</span>
+                                        </div>
+                                    </div>
+                                    <div className="absolute -bottom-6 -right-6 bg-accent-pink text-white p-4 rounded-3xl shadow-xl transform rotate-12 flex flex-col items-center animate-bounce-slow">
+                                        <span className="material-symbols-outlined text-4xl">auto_awesome</span>
+                                        <span className="text-[10px] font-black uppercase">Magic AI</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-8 max-w-[600px] items-center lg:items-start text-center lg:text-left">
+                                    <div className="flex flex-col gap-4">
+                                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full w-fit shadow-md mx-auto lg:mx-0">
+                                            <span className="material-symbols-outlined text-primary text-xl">verified</span>
+                                            <span className="text-sm font-extrabold text-black">BEST STUDIO 2024</span>
+                                        </div>
+                                        <h1 className="text-black text-6xl md:text-7xl font-black leading-[1.1] tracking-tight">
+                                            여권사진,<br />딸깍 하면 끝!
+                                        </h1>
+                                        <p className="text-black/80 text-xl font-bold leading-relaxed">
+                                            가장 귀엽고 간편한 여권사진 만들기. AI가 자동으로 완벽하게 보정해드려요!
+                                        </p>
+                                    </div>
+                                    <button className="flex w-full max-w-sm items-center justify-center rounded-3xl h-20 px-10 bg-black text-white text-2xl font-black shadow-3d-black active:translate-y-2 active:shadow-none transition-all">
+                                        지금 시작하기
+                                        <span className="material-symbols-outlined ml-3 text-3xl">camera_enhance</span>
+                                    </button>
+                                </div>
+                            </section>
+
+                            {/* Features */}
+                            <section id="features" className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-40">
+                                <div className="bg-white p-8 rounded-[32px] shadow-xl flex flex-col items-center text-center">
+                                    <div className="size-20 bg-accent-blue rounded-2xl flex items-center justify-center text-white mb-6 shadow-3d-blue">
+                                        <span className="material-symbols-outlined text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>face_retouching_natural</span>
+                                    </div>
+                                    <h4 className="text-xl font-black mb-2">AI 자동 보정</h4>
+                                    <p className="text-gray-500 font-bold">클릭 한 번으로 피부톤과 머릿결을 완벽하게.</p>
+                                </div>
+                                <div className="bg-white p-8 rounded-[32px] shadow-xl flex flex-col items-center text-center">
+                                    <div className="size-20 bg-accent-purple rounded-2xl flex items-center justify-center text-white mb-6 shadow-3d-purple">
+                                        <span className="material-symbols-outlined text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>straighten</span>
+                                    </div>
+                                    <h4 className="text-xl font-black mb-2">여권 규격 준수</h4>
+                                    <p className="text-gray-500 font-bold">전 세계 여권 사진 규격에 맞게 자동 크롭.</p>
+                                </div>
+                                <div className="bg-white p-8 rounded-[32px] shadow-xl flex flex-col items-center text-center">
+                                    <div className="size-20 bg-accent-green rounded-2xl flex items-center justify-center text-white mb-6 shadow-3d-green">
+                                        <span className="material-symbols-outlined text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>download</span>
+                                    </div>
+                                    <h4 className="text-xl font-black mb-2">즉시 다운로드</h4>
+                                    <p className="text-gray-500 font-bold">인화 가능한 고해상도 파일을 바로 받으세요.</p>
+                                </div>
+                            </section>
+
+                            {/* Demo Section (Analyzer) */}
+                            <section id="demo" className="mt-40 py-24 bg-[#fffedb] rounded-[60px] border-8 border-white shadow-inner">
+                                <div className="flex flex-col items-center mb-16 text-center">
+                                    <h2 className="text-5xl md:text-6xl font-black text-black tracking-tighter relative">
+                                        집에서 3,900원으로 먼저 해보기
+                                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-32 h-2 bg-black rounded-full"></div>
+                                    </h2>
+                                    <p className="text-zinc-500 font-bold text-lg mt-8 max-w-lg px-4">
+                                        내 손안의 작은 스튜디오.<br /> AI가 선사하는 완벽한 결과물을 경험해보세요.
+                                    </p>
+                                </div>
+                                <PassportAnalyzer />
+                            </section>
+
+                            {/* Call To Action */}
+                            <section id="service" className="mt-40 bg-white rounded-[50px] p-12 md:p-20 flex flex-col items-center text-center shadow-card border-4 border-black">
+                                <div className="size-24 bg-primary rounded-3xl flex items-center justify-center mb-8 transform -rotate-6 shadow-xl">
+                                    <span className="material-symbols-outlined text-white text-5xl">auto_fix_high</span>
+                                </div>
+                                <h3 className="text-4xl md:text-5xl font-black mb-6 text-black">여권사진 준비되셨나요?</h3>
+                                <div className="flex flex-wrap justify-center gap-6">
+                                    <button className="bg-accent-pink text-white px-10 py-5 rounded-[24px] font-black text-xl shadow-3d-pink">무료로 시작하기</button>
+                                    <button className="bg-white text-black border-4 border-black px-10 py-5 rounded-[24px] font-black text-xl shadow-3d-black">갤러리 보기</button>
+                                </div>
+                            </section>
+
+                        </main>
+
+                        {/* Footer */}
+                        <footer className="bg-black text-white py-20 px-6 md:px-20 mt-20 rounded-t-[60px]">
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-10 opacity-70">
+                                <div className="font-black text-2xl tracking-tighter">YEONHUI STUDIO</div>
+                                <div className="flex flex-wrap justify-center gap-8 text-sm font-bold">
+                                    <a>이용약관</a>
+                                    <a>개인정보처리방침</a>
+                                    <a>고객센터</a>
+                                    <a>Instagram</a>
+                                </div>
+                                <div className="text-xs font-bold opacity-30">© 2024 Yeonhui Studio. All rights reserved.</div>
+                            </div>
+                        </footer>
+
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>
