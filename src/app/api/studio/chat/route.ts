@@ -25,7 +25,7 @@ export async function POST(req: Request) {
                     {
                         role: 'system',
                         content: `사용자의 질문을 분석하여 다음 팀 중 가장 적절한 팀 ID 하나만 응답하세요. 오직 ID만 출력하세요.
-                        IDs: funnel, marketing, qa, cs, partner, data, automation, dev
+                        IDs: funnel, marketing, qa, cs, partner, data, automation, dev, design, research
                         
                         분석 기준:
                         - funnel: 광고, 카피라이팅, 설득
@@ -35,7 +35,9 @@ export async function POST(req: Request) {
                         - partner: 제휴, 영업, 제안서
                         - data: 분석, 수치, 인사이트
                         - automation: 자동화, n8n, 워크플로우
-                        - dev: 코드, 사이트 기능, 개발`
+                        - dev: 코드, 사이트 기능, 개발
+                        - design: UI/UX, 디자인, 스티치, 프론트엔드 시각화
+                        - research: 리서치, 자료조사, 노트북LM, 팩트 체크`
                     },
                     { role: 'user', content: message }
                 ],
@@ -51,7 +53,7 @@ export async function POST(req: Request) {
         if (mode === 'council') {
             systemPrompt = `당신은 '연희스튜디오'의 전문가 위원회입니다. 
             사용자의 의안에 대해 '운영진 복합 관점'에서 통합 답변을 제공하세요.
-            답변에는 최소 3명 이상의 팀장(예: 퍼널팀장, QA팀장, 개발팀장)의 짧은 견해와 최종 결론이 포함되어야 합니다.
+            답변에는 최소 3명 이상의 팀장(예: 디자인팀장, 리서치팀장, 퍼널팀장)의 짧은 견해와 최종 결론이 포함되어야 합니다.
             ${GLOBAL_CONTEXT}`;
         } else {
             const persona = TEAM_PERSONAS[targetTeamId || 'funnel'];

@@ -1,4 +1,4 @@
-import { LucideIcon, Target, Megaphone, CheckCircle2, Headphones, Handshake, BarChart3, Bot, Code2 } from 'lucide-react';
+import { LucideIcon, Target, Megaphone, CheckCircle2, Headphones, Handshake, BarChart3, Bot, Code2, Palette, Search } from 'lucide-react';
 
 export interface Team {
     id: string;
@@ -82,5 +82,23 @@ export const TEAMS: Team[] = [
         color: 'text-yellow-400',
         bgColor: 'bg-yellow-500/10',
         borderColor: 'hover:ring-yellow-500/50'
+    },
+    {
+        id: 'design',
+        name: '디자인실 (Stitch)',
+        description: 'UI/UX 디자인, 웹사이트 인터페이스 프로토타이핑, Stitch 기반 화면 생성.',
+        icon: Palette,
+        color: 'text-pink-400',
+        bgColor: 'bg-pink-500/10',
+        borderColor: 'hover:ring-pink-500/50'
+    },
+    {
+        id: 'research',
+        name: '리서치실 (NotebookLM)',
+        description: '깊이 있는 시장 조사, 팩트 체크, 프로젝트 지식 베이스 검색 및 리서치.',
+        icon: Search,
+        color: 'text-indigo-400',
+        bgColor: 'bg-indigo-500/10',
+        borderColor: 'hover:ring-indigo-500/50'
     }
 ];
