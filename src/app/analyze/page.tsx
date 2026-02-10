@@ -133,6 +133,7 @@ export default function Page() {
     const [crown, setCrown] = useState<Point | null>(null);
     const [chin, setChin] = useState<Point | null>(null);
     const [faceBox, setFaceBox] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+    const [faceCenterX, setFaceCenterX] = useState<number | null>(null); // [New] Nose tip X for perfect centering
     const [scores, setScores] = useState<Scores>({
         headRatio: null, headOk: null,
         bgWhiteness: null, bgUniformity: null,
@@ -188,6 +189,7 @@ export default function Page() {
         setCrown(null);
         setChin(null);
         setFaceBox(null);
+        setFaceCenterX(null);
         setScores({ headRatio: null, headOk: null, bgWhiteness: null, bgUniformity: null, exposure: null, sharpness: null });
         setMode('crown');
     }
@@ -284,7 +286,10 @@ export default function Page() {
         const targetHeadHeight = 380;
 
         const scale = targetHeadHeight / headLen;
-        const centerX_src = (crown.x + chin.x) / 2;
+
+        // [Auto Center] Use nose tip X if detected
+        const centerX_src = faceCenterX ?? ((crown.x + chin.x) / 2);
+
         const targetCrownY = TARGET_TOP_PX;
         const targetCenterX = OUT_W / 2;
 
@@ -364,6 +369,9 @@ export default function Page() {
                 const noseTip = landmarks.positions[30];
                 const faceLen = chinPoint.y - eyebrowsY;
 
+                // [Auto Center] Save nose tip X
+                setFaceCenterX(noseTip.x);
+
                 // Signal 1: Fixed ratio from eyebrows (original tuned method)
                 const crownByRatio = eyebrowsY - faceLen * 0.68;
 
@@ -403,6 +411,7 @@ export default function Page() {
         // Do NOT auto switch to manual mode. Just clear points.
         // User will see "Manual Setting" button highlighted because (!crown && !isDetecting).
         setFaceBox(null);
+        setFaceCenterX(null);
         setCrown(null);
         setChin(null);
         setMode('none'); // Keep mode none, let user click button
@@ -541,8 +550,8 @@ export default function Page() {
         // 2. 스케일 계산 (원본 얼굴 길이 -> 380px)
         scale = targetHeadHeight / headLen;
 
-        // 3. 기준점(가로): 정수리와 턱끝의 X중간점 사용
-        const centerX_src = (crown.x + chin.x) / 2;
+        // 3. 기준점(가로): 정수리와 턱끝의 X중간점 대신 코끝(Nose Tip) 사용 시도
+        const centerX_src = faceCenterX ?? ((crown.x + chin.x) / 2);
 
         // 4. 목표 위치(출력)
         const targetCrownY = TARGET_TOP_PX; // 30px
@@ -585,13 +594,16 @@ export default function Page() {
         setIsRemovingBg(true);
         try {
             // 1. Remove background (returns Blob with transparent bg)
-            // Use default CDN (static.imgly.com)
-            const blob = await removeBackground(fileUrl, {
+            // [Fix] Add explicit CDN and publicPath to avoid 'Failed to fetch' on some environments
+            const config: any = {
                 debug: true,
-                progress: (key, current, total) => {
+                progress: (key: string, current: number, total: number) => {
                     console.log(`Downloading ${key}: ${current} of ${total}`);
-                }
-            });
+                },
+                model_base_url: 'https://static.imgly.com/lib/background-removal-js/v1.7.0/res/',
+                publicPath: 'https://static.imgly.com/lib/background-removal-js/v1.7.0/res/'
+            };
+            const blob = await removeBackground(fileUrl, config);
 
             // 2. Composite onto White Background
             const bitmap = await createImageBitmap(blob);
@@ -739,6 +751,9 @@ export default function Page() {
                 <p className="mt-2 text-sm text-neutral-600">
                     사진을 올리면 자동으로 얼굴을 인식합니다. <b>[배경 하얗게 만들기]</b> 후 <b>[규격 다운로드]</b>를 진행하세요.
                 </p>
+                <div className="mt-2 text-xs text-amber-600 font-medium">
+                    💡 팁: 흰색 또는 단순한 배경에서 촬영하시면 배경 제거 결과가 훨씬 깨끗합니다.
+                </div>
 
                 <div className="mt-6 flex flex-col gap-4 md:flex-row">
                     <div className="md:w-2/3 rounded-2xl bg-white p-4 shadow-sm">
