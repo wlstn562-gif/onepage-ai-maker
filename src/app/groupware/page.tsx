@@ -39,7 +39,20 @@ export default function GroupwareDashboard() {
 
         const userNameCookie = getCookie('user-name');
         if (userNameCookie) {
-            setUserName(decodeURIComponent(userNameCookie));
+            try {
+                let decodedName = userNameCookie;
+                for (let i = 0; i < 3; i++) {
+                    if (decodedName.includes('%')) {
+                        decodedName = decodeURIComponent(decodedName);
+                    } else {
+                        break;
+                    }
+                }
+                setUserName(decodedName);
+            } catch (e) {
+                console.error("Failed to decode user-name", e);
+                setUserName(userNameCookie);
+            }
         } else {
             const userInfoStr = getCookie('user-info');
             if (userInfoStr) {
@@ -60,7 +73,7 @@ export default function GroupwareDashboard() {
 
         if (r !== 'admin') {
             fetch('/api/employee/me').then(res => res.json()).then(data => {
-                const total = Number(data.totalLeave || 0) + Number(data.manualLeave || 0);
+                const total = Number(data.totalLeave || 0);
                 const used = Number(data.usedLeave || 0);
                 setLeaveStats({ total, used, remaining: total - used });
             });

@@ -20,10 +20,26 @@ export default function HubPage() {
         if (token || role) {
             setIsLoggedIn(true);
 
-            // Get User Name
+            // Get User Name with robust decoding
             const userNameCookie = getCookie('user-name');
             if (userNameCookie) {
-                setUserName(decodeURIComponent(userNameCookie));
+                try {
+                    // Start with the raw cookie value
+                    let decodedName = userNameCookie;
+                    // Attempt to decode multiple times if needed (sometimes cookies get double encoded)
+                    // limit loop to avoid infinite loops
+                    for (let i = 0; i < 3; i++) {
+                        if (decodedName.includes('%')) {
+                            decodedName = decodeURIComponent(decodedName);
+                        } else {
+                            break;
+                        }
+                    }
+                    setUserName(decodedName);
+                } catch (e) {
+                    console.error("Failed to decode user-name", e);
+                    setUserName(userNameCookie); // Fallback to raw if decode fails
+                }
             } else {
                 const userInfoStr = getCookie('user-info');
                 if (userInfoStr) {

@@ -27,7 +27,11 @@ export default function LoginPage() {
             const data = await response.json();
 
             if (response.ok) {
-                router.push('/hub');
+                if (data.role === 'admin') {
+                    router.push('/');
+                } else {
+                    router.push('/photo');
+                }
                 router.refresh(); // Refresh to update middleware state
             } else {
                 setError(data.message || '로그인을 실패했습니다.');

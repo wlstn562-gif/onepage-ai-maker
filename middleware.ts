@@ -7,15 +7,23 @@ export function middleware(request: NextRequest) {
     // Define paths that require authentication
     const isProtectedRoute = path.startsWith('/groupware')
 
-    // Get the token from the cookies
+    // Get the token and role from the cookies
     const token = request.cookies.get('auth-token')?.value
+    const role = request.cookies.get('user-role')?.value
 
-    // Redirect to login if accessing a protected route without a token
+    // 1. Root path protection: Only admin can access '/', others redirect to '/photo'
+    if (path === '/') {
+        if (role !== 'admin') {
+            return NextResponse.redirect(new URL('/photo', request.url))
+        }
+    }
+
+    // 2. Protected routes logic (Groupware)
     if (isProtectedRoute && !token) {
         return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    // Redirect to groupware if accessing login page with a token
+    // 3. Login page redirection
     if (path === '/login' && token) {
         return NextResponse.redirect(new URL('/groupware', request.url))
     }
@@ -24,5 +32,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/groupware/:path*', '/login'],
+    matcher: ['/', '/groupware/:path*', '/login'],
 }

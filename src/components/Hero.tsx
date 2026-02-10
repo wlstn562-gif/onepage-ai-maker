@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 
 const Hero: React.FC = () => {
   return (
@@ -37,11 +38,11 @@ const Hero: React.FC = () => {
             </p>
           </div>
 
-          <button className="group relative flex w-full max-w-sm cursor-pointer items-center justify-center rounded-3xl h-20 px-10 bg-black text-white text-2xl font-black shadow-3d-black hover:shadow-[0_3px_0_0_#000] hover:translate-y-[3px] active:translate-y-[6px] active:shadow-none transition-all overflow-hidden lg:self-start self-center">
+          <Link href="/analyze" className="group relative flex w-full max-w-sm cursor-pointer items-center justify-center rounded-3xl h-20 px-10 bg-black text-white text-2xl font-black shadow-3d-black hover:shadow-[0_3px_0_0_#000] hover:translate-y-[3px] active:translate-y-[6px] active:shadow-none transition-all overflow-hidden lg:self-start self-center">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
             <span className="truncate">지금 시작하기</span>
             <span className="material-symbols-outlined ml-3 text-3xl">camera_enhance</span>
-          </button>
+          </Link>
         </div>
 
       </div>

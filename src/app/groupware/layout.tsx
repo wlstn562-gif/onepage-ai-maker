@@ -26,7 +26,20 @@ export default function GroupwareLayout({
 
         const userNameCookie = getCookie('user-name');
         if (userNameCookie) {
-            setUserName(decodeURIComponent(userNameCookie));
+            try {
+                let decodedName = userNameCookie;
+                for (let i = 0; i < 3; i++) {
+                    if (decodedName.includes('%')) {
+                        decodedName = decodeURIComponent(decodedName);
+                    } else {
+                        break;
+                    }
+                }
+                setUserName(decodedName);
+            } catch (e) {
+                console.error("Failed to decode user-name", e);
+                setUserName(userNameCookie);
+            }
         } else {
             const userInfoStr = getCookie('user-info');
             if (userInfoStr) {

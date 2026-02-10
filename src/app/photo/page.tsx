@@ -8,8 +8,8 @@ import Footer from '@/components/Footer';
 
 export default function App() {
   return (
-    <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden bg-[#f8b84e]/10">
-      <div className="layout-container flex h-full grow flex-col bg-white/50 backdrop-blur-sm">
+    <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden" style={{ backgroundColor: '#fff0c1' }}>
+      <div className="layout-container flex h-full grow flex-col bg-[#fff0c1]">
         <Header />
         <main className="flex-1 px-4 md:px-20 lg:px-40 pb-20">
           <Hero />

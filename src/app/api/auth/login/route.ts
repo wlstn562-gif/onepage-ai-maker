@@ -29,6 +29,14 @@ export async function POST(request: Request) {
                 path: '/',
             });
 
+            response.cookies.set('user-name', encodeURIComponent('관리자'), {
+                httpOnly: false,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 60 * 60 * 24,
+                path: '/',
+            });
+
             return response;
         }
 
