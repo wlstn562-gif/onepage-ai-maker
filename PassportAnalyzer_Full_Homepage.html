@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>연희스튜디오 - AI 여권사진</title>
+    <title>연희스튜디오 - 프리미엄 여권사진</title>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -32,8 +32,9 @@
                         "4xl": "3rem",
                     },
                     boxShadow: {
-                        "3d-black": "0 6px 0 0 #000000",
-                        "3d-yellow": "0 4px 0 0 #D9A406",
+                        "3d-black": "0 6px 0_0 #111111",
+                        "3d-orange": "0 6px 0 0 #E67E00",
+                        "3d-yellow": "0 4px 0 0 #B45309",
                         "3d-pink": "0 8px 0 0 #E03131",
                         "3d-pink-sm": "0 4px 0 0 #E03131",
                         "3d-blue": "0 6px 0 0 #1971C2",
@@ -150,7 +151,7 @@
 
                 ctx.setLineDash([6, 4]);
                 ctx.lineWidth = 1.5;
-                ctx.strokeStyle = '#3b82f6';
+                ctx.strokeStyle = '#ff4d4d';
                 ctx.beginPath(); ctx.moveTo(0, TARGET_TOP_PX); ctx.lineTo(OUT_W, TARGET_TOP_PX); ctx.stroke();
                 const chinLineY = TARGET_TOP_PX + TARGET_HEAD_HEIGHT;
                 ctx.beginPath(); ctx.moveTo(0, chinLineY); ctx.lineTo(OUT_W, chinLineY); ctx.stroke();
@@ -164,7 +165,7 @@
                 const f = e.target.files?.[0]; if (!f) return;
                 setFileUrl(URL.createObjectURL(f));
                 setCrown(null); setChin(null); setFaceBox(null);
-                setMode('none'); setPreviewUrl(null); setFaceDetected(false);
+                setMode('none'); setFaceDetected(false);
             };
 
             const drawCanvas = () => {
@@ -234,14 +235,23 @@
                                             else if (mode === 'chin') { setChin({ x: nx, y: ny }); setMode('none'); }
                                         }} />
                                         <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none z-10" />
-                                        {isDetecting && (
-                                            <div className="absolute inset-0 flex items-center justify-center z-30 bg-black/20 backdrop-blur-[2px]">
-                                                <div className="bg-black/80 text-white px-6 py-3 rounded-full font-black text-base shadow-lg flex items-center gap-3">
-                                                    <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                                    데이터 분석 중...
+                                        {mode !== 'none' ? (
+                                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 w-[80%]">
+                                                <div className="bg-white text-[#111111] px-6 py-4 rounded-3xl font-black text-base shadow-2xl animate-bounce border-4 border-[#FF9F0A] text-center">
+                                                    {mode === 'crown' ? '📸 머리 맨 위(정수리)를 터치!' : '📸 턱 끝을 터치하세요!'}
                                                 </div>
                                             </div>
-                                        )}
+                                        ) : (crown && chin && (
+                                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 w-[80%]">
+                                                <button
+                                                    onClick={() => { setCrown(null); setChin(null); setMode('crown'); }}
+                                                    className="bg-white/90 backdrop-blur text-black px-6 py-3 rounded-full font-black text-sm shadow-xl border-2 border-zinc-200 hover:bg-white transition-all flex items-center justify-center gap-2 mx-auto active:scale-95"
+                                                >
+                                                    <span className="material-symbols-outlined text-base">refresh</span>
+                                                    좌표 다시 찍기
+                                                </button>
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
                             </div>
@@ -255,40 +265,47 @@
                             <div className="absolute inset-0 rounded-[68px] bg-gradient-to-br from-[#ffffff] via-[#e5e5e5] to-[#d4d4d4] -z-10"></div>
 
                             <div className="bg-white rounded-[58px] overflow-hidden w-full h-full flex flex-col relative shadow-[0_0_0_8px_#000000]">
-                                <div className="absolute top-2 left-1/2 -translate-x-1/2 w-36 h-7 bg-black rounded-full z-20 flex items-center justify-center px-3">
-                                    <p className="text-white text-[10px] font-black tracking-tight">미리보기 (413×531)</p>
-                                    <div className="size-1.5 rounded-full bg-blue-500 absolute right-3 animate-pulse" />
-                                </div>
-                                <div className="flex-1 flex flex-col pt-12 p-6 overflow-hidden">
-                                    <div className="w-full bg-gray-50 rounded-[2.5rem] border-4 border-gray-100 overflow-hidden shadow-sm relative aspect-[413/531] mb-6 shrink-0 grow-0">
-                                        {previewUrl ? <img src={previewUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center text-zinc-300 bg-zinc-50"><span className="material-symbols-outlined text-5xl mb-3 block text-zinc-200">photo_camera</span><p className="text-sm font-black text-zinc-300">미리보기</p></div>}
+                                <section className="mt-40 bg-[#1A1A1A] rounded-[50px] overflow-hidden relative min-h-[600px] flex flex-col items-center justify-center py-20">
+                                    <div className="absolute inset-0 opacity-10">
+                                        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_white_0%,_transparent_70%)]"></div>
                                     </div>
-                                    <div className="space-y-3 w-full mt-auto">
-                                        {!fileUrl ? (
-                                            <label className="h-14 w-full bg-black hover:bg-zinc-800 rounded-2xl flex items-center justify-center text-white font-black text-base cursor-pointer shadow-lg active:scale-95 transition-all gap-3">
-                                                <span className="material-symbols-outlined text-xl">cloud_upload</span>
-                                                사진 불러오기
-                                                <input type="file" className="hidden" accept="image/*" onChange={handleFile} />
-                                            </label>
-                                        ) : (
-                                            <div className="grid grid-cols-1 gap-2">
-                                                <button onClick={() => setMode('crown')} className="h-12 w-full bg-zinc-900 rounded-2xl text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
-                                                    <span className="material-symbols-outlined text-lg">ads_click</span>
-                                                    정수리 턱끝 설정
-                                                </button>
-                                                <button className="h-12 w-full bg-blue-500 rounded-2xl text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
-                                                    <span className="material-symbols-outlined text-lg">auto_fix_high</span>
-                                                    배경 하얗게 처리
-                                                </button>
-                                                <button className="h-14 w-full bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl text-white font-black text-base shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
-                                                    <span className="material-symbols-outlined text-xl">payments</span>
-                                                    3,900원 결제 후 다운로드
-                                                </button>
+                                    <div className="relative z-10 w-full max-w-3xl text-center px-6 flex flex-col grow">
+                                        <div className="absolute top-2 left-1/2 -translate-x-1/2 w-36 h-7 bg-black rounded-full z-20 flex items-center justify-center px-3">
+                                            <p className="text-white text-[10px] font-black tracking-tight">미리보기 (413×531)</p>
+                                            <div className="size-1.5 rounded-full bg-blue-500 absolute right-3 animate-pulse" />
+                                        </div>
+                                        <div className="flex-1 flex flex-col pt-12 p-6 overflow-hidden">
+                                            <div className="w-full bg-gray-50 rounded-[2.5rem] border-4 border-gray-100 overflow-hidden shadow-sm relative aspect-[413/531] mb-6 shrink-0 grow-0">
+                                                {previewUrl ? <img src={previewUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex flex-col items-center justify-center text-zinc-300 bg-zinc-50"><span className="material-symbols-outlined text-5xl mb-3 block text-zinc-200">photo_camera</span><p className="text-sm font-black text-zinc-300">미리보기</p></div>}
                                             </div>
-                                        )}
+                                            <div className="space-y-3 w-full mt-auto">
+                                                {!fileUrl ? (
+                                                    <label className="h-14 w-full bg-gradient-to-br from-[#FFB200] to-[#FF8A00] hover:brightness-110 rounded-2xl flex items-center justify-center text-white font-black text-base cursor-pointer shadow-3d-orange active:scale-95 transition-all gap-3">
+                                                        <span className="material-symbols-outlined text-xl">cloud_upload</span>
+                                                        사진 불러오기
+                                                        <input type="file" className="hidden" accept="image/*" onChange={handleFile} />
+                                                    </label>
+                                                ) : (
+                                                    <div className="grid grid-cols-1 gap-2">
+                                                        <button onClick={() => setMode('crown')} className="h-12 w-full bg-zinc-900 rounded-2xl text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
+                                                            <span className="material-symbols-outlined text-lg">ads_click</span>
+                                                            정수리 턱끝 설정
+                                                        </button>
+                                                        <button className="h-12 w-full bg-blue-500 rounded-2xl text-white font-black text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
+                                                            <span className="material-symbols-outlined text-lg">auto_fix_high</span>
+                                                            배경 하얗게 처리
+                                                        </button>
+                                                        <button className="h-14 w-full bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl text-white font-black text-base shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
+                                                            <span className="material-symbols-outlined text-xl">payments</span>
+                                                            3,900원 결제 후 다운로드
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="h-1.5 w-32 bg-zinc-200 rounded-full mx-auto mb-5 shrink-0" />
                                     </div>
-                                </div>
-                                <div className="h-1.5 w-32 bg-zinc-200 rounded-full mx-auto mb-5 shrink-0" />
+                                </section>
                             </div>
                         </div>
                     </div>
@@ -306,16 +323,16 @@
                         <header className="flex items-center justify-between px-6 md:px-20 py-10">
                             <div className="flex items-center gap-3">
                                 <div className="h-12 w-auto flex items-center font-black text-2xl tracking-tighter">
-                                    YEONHUI STUDIO
+                                    YEONHEE STUDIO
                                 </div>
                             </div>
                             <div className="hidden md:flex items-center gap-2 bg-white/30 backdrop-blur-md px-2 py-2 rounded-full border border-white/40 shadow-sm">
                                 <a className="text-sm font-bold text-black/70 hover:text-black px-6 py-2" href="#">홈</a>
-                                <a className="text-sm font-black text-black bg-white px-6 py-2 rounded-full shadow-sm" href="#features">AI 여권사진</a>
-                                <a className="text-sm font-bold text-black/70 hover:text-black px-6 py-2" href="#demo">데모보기</a>
+                                <a className="text-sm font-black text-black bg-white px-6 py-2 rounded-full shadow-sm" href="#branches">지점 예약</a>
+                                <a className="text-sm font-bold text-black/70 hover:text-black px-6 py-2" href="#demo">직접 해보기</a>
                                 <a className="text-sm font-bold text-black/70 hover:text-black px-6 py-2" href="#service">가격안내</a>
                             </div>
-                            <button className="flex min-w-[100px] items-center justify-center rounded-2xl h-12 px-6 bg-black text-white text-sm font-bold shadow-3d-black">
+                            <button className="flex min-w-[100px] items-center justify-center rounded-2xl h-12 px-6 bg-gradient-to-br from-[#FFB200] to-[#FF8A00] text-white text-sm font-bold shadow-3d-orange hover:brightness-110">
                                 로그인
                             </button>
                         </header>
@@ -328,31 +345,31 @@
                                     <div className="absolute inset-0 bg-white/30 rounded-[40px] blur-3xl -z-10"></div>
                                     <div className="relative bg-white p-4 rounded-[40px] shadow-card border-[6px] border-white transform hover:rotate-2 transition-transform duration-500">
                                         <div className="w-full aspect-[4/3] bg-gray-200 rounded-[30px] flex items-center justify-center">
-                                            <span className="material-symbols-outlined text-6xl text-gray-300">smart_toy</span>
+                                            <span className="material-symbols-outlined text-6xl text-gray-300">photo_camera</span>
                                         </div>
                                     </div>
                                     <div className="absolute -bottom-6 -right-6 bg-accent-pink text-white p-4 rounded-3xl shadow-xl transform rotate-12 flex flex-col items-center animate-bounce-slow">
-                                        <span className="material-symbols-outlined text-4xl">auto_awesome</span>
-                                        <span className="text-[10px] font-black uppercase">Magic Studio</span>
+                                        <span className="material-symbols-outlined text-4xl">verified</span>
+                                        <span className="text-[10px] font-black uppercase">Yeonhee Studio</span>
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-8 max-w-[600px] items-center lg:items-start text-center lg:text-left">
                                     <div className="flex flex-col gap-4">
                                         <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full w-fit shadow-md mx-auto lg:mx-0">
-                                            <span className="material-symbols-outlined text-primary text-xl">verified</span>
-                                            <span className="text-sm font-extrabold text-black">BEST STUDIO 2024</span>
+                                            <span className="material-symbols-outlined text-[#FF9F0A] text-xl">verified</span>
+                                            <span className="text-sm font-extrabold text-[#111111]">BEST STUDIO 2024</span>
                                         </div>
-                                        <h1 className="text-black text-6xl md:text-7xl font-black leading-[1.1] tracking-tight">
+                                        <h1 className="text-[#111111] text-6xl md:text-7xl font-black leading-[1.1] tracking-tight">
                                             여권사진,<br />딸깍 하면 끝!
                                         </h1>
-                                        <p className="text-black/80 text-xl font-bold leading-relaxed">
-                                            가장 귀엽고 간편한 여권사진 만들기. 스튜디오급 리터칭으로 완벽하게 보정해드려요!
+                                        <p className="text-[#111111]/80 text-xl font-bold leading-relaxed">
+                                            가장 깔끔하고 간편한 여권사진 만들기. 전문가의 손길을 거친 듯 완벽하게 보정해드려요!
                                         </p>
                                     </div>
-                                    <button className="flex w-full max-w-sm items-center justify-center rounded-3xl h-20 px-10 bg-black text-white text-2xl font-black shadow-3d-black active:translate-y-2 active:shadow-none transition-all">
-                                        지금 시작하기
-                                        <span className="material-symbols-outlined ml-3 text-3xl">camera_enhance</span>
-                                    </button>
+                                    <a href="#branches" className="flex w-full max-w-sm items-center justify-center rounded-3xl h-20 px-10 bg-gradient-to-br from-[#FFB200] to-[#FF8A00] text-white text-2xl font-black shadow-[0_8px_0_0_#E67E00] active:translate-y-2 active:shadow-none transition-all">
+                                        가까운 지점 예약하기
+                                        <span className="material-symbols-outlined ml-3 text-3xl">event_available</span>
+                                    </a>
                                 </div>
                             </section>
 
@@ -362,7 +379,7 @@
                                     <div className="size-20 bg-accent-blue rounded-2xl flex items-center justify-center text-white mb-6 shadow-3d-blue">
                                         <span className="material-symbols-outlined text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>face_retouching_natural</span>
                                     </div>
-                                    <h4 className="text-xl font-black mb-2">AI 자동 보정</h4>
+                                    <h4 className="text-xl font-black mb-2">스마트 자동 보정</h4>
                                     <p className="text-gray-500 font-bold">클릭 한 번으로 피부톤과 머릿결을 완벽하게.</p>
                                 </div>
                                 <div className="bg-white p-8 rounded-[32px] shadow-xl flex flex-col items-center text-center">
@@ -381,54 +398,270 @@
                                 </div>
                             </section>
 
+                            {/* Branches Section */}
+                            <section id="branches" className="mt-40">
+                                <div className="text-center mb-16">
+                                    <span className="px-4 py-1.5 bg-white rounded-full text-[10px] font-black shadow-sm mb-4 inline-block uppercase tracking-widest text-black">Our Studios</span>
+                                    <h3 className="text-5xl font-black text-black mb-4">가까운 지점을 선택하세요</h3>
+                                    <p className="text-zinc-500 font-bold text-lg">전 지점 동일한 스튜디오 서비스를 제공합니다.</p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                                    {/* Cheonan */}
+                                    <div className="bg-white p-8 rounded-[32px] shadow-xl flex flex-col items-center text-center transform hover:-translate-y-2 transition-all group">
+                                        <div className="size-24 bg-accent-blue rounded-3xl flex items-center justify-center text-white mb-6 shadow-3d-blue group-hover:scale-110 transition-transform">
+                                            <span className="material-symbols-outlined text-5xl" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
+                                        </div>
+                                        <h4 className="text-3xl font-black mb-6 text-black">천안점</h4>
+                                        <a href="https://map.naver.com/p/entry/place/1653778604" target="_blank" className="w-full inline-flex items-center justify-center h-14 bg-gradient-to-br from-[#FFB200] to-[#FF8A00] text-white rounded-2xl font-black text-sm shadow-3d-orange active:translate-y-1 active:shadow-none transition-all gap-2">
+                                            예약하러 가기
+                                            <span className="material-symbols-outlined text-xl">calendar_month</span>
+                                        </a>
+                                    </div>
+                                    {/* Cheongju */}
+                                    <div className="bg-white p-8 rounded-[32px] shadow-xl flex flex-col items-center text-center transform hover:-translate-y-2 transition-all group">
+                                        <div className="size-24 bg-accent-purple rounded-3xl flex items-center justify-center text-white mb-6 shadow-3d-purple group-hover:scale-110 transition-transform">
+                                            <span className="material-symbols-outlined text-5xl" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
+                                        </div>
+                                        <h4 className="text-3xl font-black mb-6 text-black">청주점</h4>
+                                        <a href="https://map.naver.com/p/entry/place/2020893608" target="_blank" className="w-full inline-flex items-center justify-center h-14 bg-gradient-to-br from-[#FFB200] to-[#FF8A00] text-white rounded-2xl font-black text-sm shadow-3d-orange active:translate-y-1 active:shadow-none transition-all gap-2">
+                                            예약하러 가기
+                                            <span className="material-symbols-outlined text-xl">calendar_month</span>
+                                        </a>
+                                    </div>
+                                    {/* Daejeon */}
+                                    <div className="bg-white p-8 rounded-[32px] shadow-xl flex flex-col items-center text-center transform hover:-translate-y-2 transition-all group">
+                                        <div className="size-24 bg-accent-green rounded-3xl flex items-center justify-center text-white mb-6 shadow-3d-green group-hover:scale-110 transition-transform">
+                                            <span className="material-symbols-outlined text-5xl" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
+                                        </div>
+                                        <h4 className="text-3xl font-black mb-6 text-black">대전점</h4>
+                                        <a href="https://map.naver.com/p/entry/place/2003916926" target="_blank" className="w-full inline-flex items-center justify-center h-14 bg-gradient-to-br from-[#FFB200] to-[#FF8A00] text-white rounded-2xl font-black text-sm shadow-3d-orange active:translate-y-1 active:shadow-none transition-all gap-2">
+                                            예약하러 가기
+                                            <span className="material-symbols-outlined text-xl">calendar_month</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </section>
+
                             {/* Demo Section (Analyzer) */}
                             <section id="demo" className="mt-40 py-24 bg-[#fffedb] rounded-[60px] border-8 border-white shadow-inner">
                                 <div className="flex flex-col items-center mb-16 px-4 text-center">
                                     <h2 className="text-4xl md:text-6xl font-black text-black leading-tight mb-4 tracking-tighter relative inline-block">
                                         집에서 <span className="relative inline-block px-2">
-                                            3,900원
-                                            <div className="absolute -bottom-1 left-0 w-full h-3 bg-[#f6ab1a]/30 -rotate-1 -z-10 rounded-sm"></div>
+                                            <span className="relative z-10">3,900원</span>
+                                            <div className="absolute -bottom-1 left-0 w-full h-4 bg-[#f6ab1a]/50 -rotate-1 z-0 rounded-sm"></div>
                                         </span>으로 먼저 해보기
                                     </h2>
-                                    <p className="text-zinc-500 font-bold text-lg mt-6 max-w-lg px-4">
-                                        내 손안의 작은 스튜디오.<br /> 터치 한 번으로 완성되는 완벽한 결과물을 경험해보세요.
-                                    </p>
+                                    {/* Guarantee Badge */}
+                                    <div className="mt-8 flex flex-col items-center gap-3 px-4">
+                                        <div className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 shadow-2xl">
+                                            <span className="material-symbols-outlined text-[#FF9F0A] text-2xl font-black">verified_user</span>
+                                            <span className="text-white font-black text-lg tracking-tight">여권 반려 시 50% 할인 촬영 제공</span>
+                                        </div>
+                                        <p className="text-zinc-400 text-sm font-bold">
+                                            * 본 파일로 반려 시, 캡처본(반려사유) 확인 후 <br className="md:hidden" /> 전 지점 사용 가능한 50% 촬영권을 드립니다.
+                                        </p>
+                                    </div>
                                 </div>
                                 <PassportAnalyzer />
                             </section>
 
-                            {/* Call To Action */}
-                            <section id="service" className="mt-40 bg-white rounded-[50px] p-12 md:p-20 flex flex-col items-center text-center shadow-card border-4 border-black">
-                                <div className="size-24 bg-primary rounded-3xl flex items-center justify-center mb-8 transform -rotate-6 shadow-xl">
-                                    <span className="material-symbols-outlined text-white text-5xl">auto_fix_high</span>
-                                </div>
-                                <h3 className="text-4xl md:text-5xl font-black mb-6 text-black">여권사진 준비되셨나요?</h3>
-                                <div className="flex flex-wrap justify-center gap-6">
-                                    <button className="bg-accent-pink text-white px-10 py-5 rounded-[24px] font-black text-xl shadow-3d-pink">무료로 시작하기</button>
-                                    <button className="bg-white text-black border-4 border-black px-10 py-5 rounded-[24px] font-black text-xl shadow-3d-black">갤러리 보기</button>
+
+                            {/* Call To Action (Franchise Section) */}
+                            <section id="franchise" className="mt-40 bg-black rounded-[60px] overflow-hidden relative py-20">
+                                <div className="relative z-10 w-full max-w-6xl mx-auto px-6 text-center">
+                                    <div className="flex flex-col items-center gap-10 mb-20">
+                                        <div className="size-20 bg-zinc-900 rounded-[2rem] border border-white/10 flex items-center justify-center rotate-12 mb-4">
+                                            <span className="material-symbols-outlined text-white text-3xl">handshake</span>
+                                        </div>
+                                        <h2 className="text-4xl md:text-6xl font-black text-white leading-tight tracking-tighter">
+                                            연희스튜디오와 함께 <br />
+                                            여정을 시작하시겠어요?
+                                        </h2>
+                                        <p className="text-white/60 text-lg md:text-xl font-bold max-w-2xl leading-relaxed">
+                                            독보적인 보정 기술력과 데이터 기반의 운영 시스템. <br />
+                                            전국 지점의 파트너가 되어 새로운 가치를 만들어가세요.
+                                        </p>
+                                    </div>
+
+                                    {/* Trust Metrics Grid */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 mb-20">
+                                        <div className="bg-white/5 backdrop-blur-md rounded-[2.5rem] p-8 border border-white/10 flex flex-col items-center group hover:bg-white/10 transition-all">
+                                            <span className="text-white/40 text-[10px] font-black tracking-[0.2em] mb-3 uppercase">TRUSTED USERS</span>
+                                            <span className="text-3xl md:text-4xl font-black text-[#FF9F0A] mb-2">1.2만+</span>
+                                            <span className="text-white/60 text-sm font-bold">누적 이용자</span>
+                                        </div>
+                                        <div className="bg-white/5 backdrop-blur-md rounded-[2.5rem] p-8 border border-white/10 flex flex-col items-center group hover:bg-white/10 transition-all">
+                                            <span className="text-white/40 text-[10px] font-black tracking-[0.2em] mb-3 uppercase">REJECTION RATE</span>
+                                            <span className="text-3xl md:text-4xl font-black text-[#FF9F0A] mb-2">0.1%</span>
+                                            <span className="text-white/60 text-sm font-bold">반려율</span>
+                                        </div>
+                                        <div className="bg-white/5 backdrop-blur-md rounded-[2.5rem] p-8 border border-white/10 flex flex-col items-center group hover:bg-white/10 transition-all">
+                                            <span className="text-white/40 text-[10px] font-black tracking-[0.2em] mb-3 uppercase">SATISFACTION</span>
+                                            <span className="text-3xl md:text-4xl font-black text-[#FF9F0A] mb-2">98%</span>
+                                            <span className="text-white/60 text-sm font-bold">고객 만족도</span>
+                                        </div>
+                                        <div className="bg-white/5 backdrop-blur-md rounded-[2.5rem] p-8 border border-white/10 flex flex-col items-center group hover:bg-white/10 transition-all">
+                                            <span className="text-white/40 text-[10px] font-black tracking-[0.2em] mb-3 uppercase">RE-VISIT RATE</span>
+                                            <span className="text-3xl md:text-4xl font-black text-[#FF9F0A] mb-2">85%</span>
+                                            <span className="text-white/60 text-sm font-bold">재방문율</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap justify-center gap-6 mb-20">
+                                        <a href="#franchise-apply" className="flex items-center justify-center rounded-[2rem] h-20 px-12 bg-white text-black text-2xl font-black shadow-xl active:scale-95 transition-all">
+                                            가맹 신청하기 <span className="material-symbols-outlined ml-2">chevron_right</span>
+                                        </a>
+                                        <a href="#consultation" className="flex items-center justify-center rounded-[2rem] h-20 px-12 bg-white/5 backdrop-blur-xl text-white text-2xl font-black border border-white/20 hover:bg-white/10 transition-all flex items-center gap-3">
+                                            상담 신청서 <span className="material-symbols-outlined text-2xl">description</span>
+                                        </a>
+                                    </div>
+
+                                    <div className="flex justify-center gap-8 md:gap-16 opacity-30">
+                                        <span className="text-white text-sm font-black tracking-[0.2em] uppercase">Quality Matters</span>
+                                        <span className="text-white text-sm font-black tracking-[0.2em] uppercase">Success Together</span>
+                                        <span className="text-white text-sm font-black tracking-[0.2em] uppercase">Global Standard</span>
+                                    </div>
                                 </div>
                             </section>
 
                         </main>
 
                         {/* Footer */}
-                        <footer className="bg-black text-white py-20 px-6 md:px-20 mt-20 rounded-t-[60px]">
+                        <footer className="bg-[#1A1A1A] text-white py-20 px-6 md:px-20 mt-20 rounded-t-[60px] border-t border-white/5">
                             <div className="flex flex-col md:flex-row justify-between items-center gap-10 opacity-70">
-                                <div className="font-black text-2xl tracking-tighter">YEONHUI STUDIO</div>
+                                <div className="font-black text-2xl tracking-tighter">YEONHEE STUDIO</div>
                                 <div className="flex flex-wrap justify-center gap-8 text-sm font-bold">
                                     <a>이용약관</a>
                                     <a>개인정보처리방침</a>
                                     <a>고객센터</a>
                                     <a>Instagram</a>
                                 </div>
-                                <div className="text-xs font-bold opacity-30">© 2024 Yeonhui Studio. All rights reserved.</div>
+                                <div className="text-xs font-bold opacity-30">© 2024 Yeonhee Studio. All rights reserved.</div>
                             </div>
                         </footer>
 
+                        <Chatbot />
                     </div>
                 </div>
             );
         }
+
+        const Chatbot = () => {
+            const [isOpen, setIsOpen] = React.useState(false);
+            const [messages, setMessages] = React.useState([
+                { role: 'ai', content: '안녕하세요! 연희스튜디오 AI 상담원입니다. 무엇을 도와드릴까요?' }
+            ]);
+            const [input, setInput] = React.useState('');
+            const [isLoading, setIsLoading] = React.useState(false);
+            const scrollRef = React.useRef(null);
+
+            React.useEffect(() => {
+                if (scrollRef.current) {
+                    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                }
+            }, [messages]);
+
+            const handleSend = () => {
+                if (!input.trim() || isLoading) return;
+
+                const userMsg = input.trim();
+                setInput('');
+                setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+                setIsLoading(true);
+
+                setTimeout(() => {
+                    let aiResponse = "죄송합니다. 해당 질문에 대한 답변을 준비 중입니다. 자세한 문의는 인스타그램이나 고객센터를 이용해 주세요.";
+
+                    if (userMsg.includes('여권') || userMsg.includes('사진')) {
+                        aiResponse = "여권사진은 흰색 배경에 얼굴 크기가 3.2~3.6cm여야 합니다. 연희스튜디오 분석기를 사용하시면 규격에 딱 맞는 사진을 만드실 수 있어요!";
+                    } else if (userMsg.includes('예약') || userMsg.includes('지점')) {
+                        aiResponse = "천안, 청주, 대전 지점이 있습니다. 홈페이지 상단의 '지점 예약' 버튼을 누르시면 네이버 예약 페이지로 연결해 드립니다.";
+                    } else if (userMsg.includes('반려') || userMsg.includes('할인')) {
+                        aiResponse = "저희 분석기로 만든 사진이 반려될 경우, 캡처본을 보여주시면 전 지점에서 사용 가능한 50% 촬영 할인권을 드립니다!";
+                    } else if (userMsg.includes('가격') || userMsg.includes('얼마')) {
+                        aiResponse = "온라인 사진 분석 및 다운로드 비용은 3,900원입니다. 오프라인 촬영 가격은 지점별로 상이할 수 있으니 예약 페이지를 확인해 주세요.";
+                    }
+
+                    setMessages(prev => [...prev, { role: 'ai', content: aiResponse }]);
+                    setIsLoading(false);
+                }, 1000);
+            };
+
+            return (
+                <div className="fixed bottom-8 right-8 z-[100] flex flex-col items-end">
+                    {isOpen && (
+                        <div className="mb-4 w-[350px] h-[500px] bg-white rounded-[32px] shadow-2xl overflow-hidden flex flex-col border border-zinc-100 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <div className="bg-[#D99022] p-6 flex justify-between items-center shrink-0 text-left">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-10 bg-white/20 rounded-2xl flex items-center justify-center text-black">
+                                        <span className="material-symbols-outlined text-white font-black">smart_toy</span>
+                                    </div>
+                                    <div className="text-left">
+                                        <h3 className="text-white font-black text-sm">연희 AI 상담원</h3>
+                                        <p className="text-white/70 text-[10px] font-bold">실시간 답변 가능</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setIsOpen(false)} className="text-white/50 hover:text-white transition-colors">
+                                    <span className="material-symbols-outlined">close</span>
+                                </button>
+                            </div>
+
+                            <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-zinc-50/50">
+                                {messages.map((msg, i) => (
+                                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm font-bold shadow-sm ${msg.role === 'user'
+                                            ? 'bg-[#D99022] text-white rounded-tr-none'
+                                            : 'bg-white text-[#1A1100] border border-zinc-100 rounded-tl-none'
+                                            }`}>
+                                            {msg.content}
+                                        </div>
+                                    </div>
+                                ))}
+                                {isLoading && (
+                                    <div className="flex justify-start">
+                                        <div className="bg-white px-4 py-3 rounded-2xl rounded-tl-none border border-zinc-100 shadow-sm flex gap-1">
+                                            <div className="size-1.5 bg-zinc-300 rounded-full animate-bounce"></div>
+                                            <div className="size-1.5 bg-zinc-300 rounded-full animate-bounce delay-75"></div>
+                                            <div className="size-1.5 bg-zinc-300 rounded-full animate-bounce delay-150"></div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="p-4 bg-white border-t border-zinc-100 shrink-0">
+                                <div className="relative text-left">
+                                    <input
+                                        type="text"
+                                        value={input}
+                                        onChange={(e) => setInput(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                                        placeholder="질문을 입력하세요..."
+                                        className="w-full h-12 bg-zinc-100 rounded-2xl px-5 pr-12 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#FF9F0A]/50 transition-all border-none"
+                                    />
+                                    <button
+                                        onClick={handleSend}
+                                        disabled={isLoading}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 size-8 bg-gradient-to-br from-[#FFB200] to-[#FF8A00] text-white rounded-xl flex items-center justify-center active:scale-90 transition-all disabled:opacity-30 shadow-md"
+                                    >
+                                        <span className="material-symbols-outlined text-sm">arrow_upward</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={() => setIsOpen(!isOpen)}
+                        className={`size-16 rounded-[24px] shadow-2xl flex items-center justify-center transition-all duration-300 active:scale-90 ${isOpen ? 'bg-zinc-100 text-[#FF9F0A] rotate-90' : 'bg-gradient-to-br from-[#FFB200] to-[#FF8A00] text-white'
+                            }`}
+                    >
+                        <span className="material-symbols-outlined text-3xl font-black">
+                            {isOpen ? 'close' : 'forum'}
+                        </span>
+                    </button>
+                </div>
+            );
+        };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);

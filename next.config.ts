@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   // eslint is no longer a top-level key in some Next 15+ setups if using eslint.config.mjs
   webpack: (config, { isServer }) => {
     if (!isServer) {

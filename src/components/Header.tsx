@@ -32,8 +32,8 @@ const Header: React.FC = () => {
 
       <div className="hidden md:flex items-center gap-2 bg-white/30 backdrop-blur-md px-2 py-2 rounded-full border border-white/40 shadow-sm">
         <Link className="text-sm font-bold text-black/70 hover:text-black px-6 py-2 rounded-full transition-colors" href="#">홈</Link>
-        <Link className="text-sm font-black text-black bg-white px-6 py-2 rounded-full shadow-sm" href="#features">모바일 여권사진</Link>
-        <Link className="text-sm font-bold text-black/70 hover:text-black px-6 py-2 rounded-full transition-colors" href="#demo">데모보기</Link>
+        <Link className="text-sm font-black text-black bg-white px-6 py-2 rounded-full shadow-sm" href="#branches">지점 예약</Link>
+        <Link className="text-sm font-bold text-black/70 hover:text-black px-6 py-2 rounded-full transition-colors" href="#demo">직접 해보기</Link>
         <Link className="text-sm font-bold text-black/70 hover:text-black px-6 py-2 rounded-full transition-colors" href="#service">가격안내</Link>
       </div>
 
@@ -44,18 +44,18 @@ const Header: React.FC = () => {
               await fetch('/api/auth/logout', { method: 'POST' });
               window.location.reload();
             }}
-            className="text-sm font-bold text-zinc-500 hover:text-red-500 transition-colors px-2"
+            className="text-sm font-bold text-[#1A1100]/50 hover:text-red-600 transition-colors px-2"
           >
             로그아웃
           </button>
-          <Link href="/groupware" className="flex min-w-[100px] cursor-pointer items-center justify-center rounded-2xl h-12 px-6 bg-yellow-400 text-black text-sm font-bold shadow-3d-yellow active:shadow-none active:translate-y-1 transition-all border-2 border-black">
+          <Link href="/groupware" className="flex min-w-[100px] cursor-pointer items-center justify-center rounded-2xl h-12 px-6 bg-[#B48A00] text-white text-sm font-bold shadow-[0_4px_0_0_#8C6C00] active:shadow-none active:translate-y-1 transition-all">
             <span>그룹웨어</span>
           </Link>
         </div>
       ) : (
-        <Link href="/login" className="flex min-w-[100px] cursor-pointer items-center justify-center rounded-2xl h-12 px-6 bg-black text-white text-sm font-bold shadow-3d-black active:shadow-none active:translate-y-1 transition-all">
-          <span>로그인</span>
-        </Link>
+        <button className="flex min-w-[100px] items-center justify-center rounded-2xl h-12 px-6 bg-gradient-to-br from-[#FFB200] to-[#FF8A00] text-white text-sm font-black shadow-[0_6px_0_0_#E67E00] hover:brightness-110 transition-all active:translate-y-1 active:shadow-none">
+          로그인
+        </button>
       )}
     </header>
   );

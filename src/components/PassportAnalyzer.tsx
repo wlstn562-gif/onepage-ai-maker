@@ -109,7 +109,7 @@ export default function PassportAnalyzer() {
 
     // --- Preview Generation with guide lines ---
     const generatePreview = useCallback(() => {
-        if (!imgRef.current || !crown || !chin) { setPreviewUrl(null); return; }
+        if (!imgRef.current || !crown || !chin) return; // DON'T set previewUrl to null here
         const headLen = Math.abs(chin.y - crown.y);
         if (headLen < 1) return;
         const scale = TARGET_HEAD_HEIGHT / headLen;
@@ -270,33 +270,41 @@ export default function PassportAnalyzer() {
             ctx.fillText('얼굴영역', bx + 4, by - 6);
         }
 
-        // Center vertical line (green, from crown to chin)
+        // Crown dot + label
+        if (crown) {
+            const cx = crown.x * sx;
+            const cy = crown.y * sy;
+            ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff4d4d'; ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.font = 'bold 12px sans-serif';
+            ctx.fillStyle = '#ff4d4d';
+            ctx.fillText('정수리', cx + 12, cy + 4);
+        }
+
+        // Chin dot + label
+        if (chin) {
+            const cx = chin.x * sx;
+            const cy = chin.y * sy;
+            ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff4d4d'; ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.font = 'bold 12px sans-serif';
+            ctx.fillStyle = '#ff4d4d';
+            ctx.fillText('턱끝', cx + 12, cy + 4);
+        }
+
+        // Center vertical line (Show if both are set)
         if (crown && chin && faceDetected) {
             const cx = ((crown.x + chin.x) / 2) * sx;
             const crownScreenY = crown.y * sy;
             const chinScreenY = chin.y * sy;
 
-            // Green vertical center line
             ctx.strokeStyle = '#00e676';
             ctx.lineWidth = 2;
             ctx.setLineDash([4, 3]);
             ctx.beginPath(); ctx.moveTo(cx, crownScreenY); ctx.lineTo(cx, chinScreenY); ctx.stroke();
             ctx.setLineDash([]);
-
-            // Crown dot + label
-            ctx.beginPath(); ctx.arc(cx, crownScreenY, 6, 0, Math.PI * 2);
-            ctx.fillStyle = '#ff4d4d'; ctx.fill();
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-            ctx.font = 'bold 12px sans-serif';
-            ctx.fillStyle = '#ff4d4d';
-            ctx.fillText('정수리', cx + 12, crownScreenY + 4);
-
-            // Chin dot + label
-            ctx.beginPath(); ctx.arc(cx, chinScreenY, 6, 0, Math.PI * 2);
-            ctx.fillStyle = '#ff4d4d'; ctx.fill();
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-            ctx.fillStyle = '#ff4d4d';
-            ctx.fillText('턱끝', cx + 12, chinScreenY + 4);
         }
     };
 
@@ -364,7 +372,9 @@ export default function PassportAnalyzer() {
                                 ) : (
                                     <>
                                         <span className="material-symbols-outlined text-6xl text-white/10 mb-4 block">image</span>
-                                        <p className="text-sm text-white/30 font-bold uppercase tracking-widest">No Image</p>
+                                        <div className="mt-16 text-center text-[12px] text-zinc-400 font-bold uppercase tracking-widest">
+                                            Yeonhee Studio • Professional Standards
+                                        </div>
                                     </>
                                 )}
                             </div>
@@ -395,13 +405,23 @@ export default function PassportAnalyzer() {
                             </div>
                         )}
 
-                        {mode !== 'none' && (
+                        {mode !== 'none' ? (
                             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 w-[80%]">
                                 <div className="bg-white text-black px-6 py-4 rounded-3xl font-black text-base shadow-2xl animate-bounce border-4 border-[#f6ab1a] text-center">
                                     {mode === 'crown' ? '📸 머리 맨 위(정수리)를 터치!' : '📸 턱 끝을 터치하세요!'}
                                 </div>
                             </div>
-                        )}
+                        ) : (crown && chin && (
+                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 w-[80%]">
+                                <button
+                                    onClick={() => { setCrown(null); setChin(null); setMode('crown'); }}
+                                    className="bg-white/90 backdrop-blur text-black px-6 py-3 rounded-full font-black text-sm shadow-xl border-2 border-zinc-200 hover:bg-white transition-all flex items-center justify-center gap-2 mx-auto active:scale-95"
+                                >
+                                    <span className="material-symbols-outlined text-base">refresh</span>
+                                    좌표 다시 찍기
+                                </button>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

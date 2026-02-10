@@ -25,7 +25,7 @@ const BranchCard = ({
             href={link}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full inline-flex items-center justify-center h-14 bg-black text-white rounded-2xl font-black text-sm shadow-3d-black active:translate-y-1 active:shadow-none transition-all gap-2"
+            className="w-full inline-flex items-center justify-center h-14 bg-gradient-to-br from-[#FFB200] to-[#FF8A00] text-white rounded-2xl font-black text-sm shadow-[0_6px_0_0_#E67E00] active:translate-y-1 active:shadow-none transition-all gap-2"
         >
             예약하러 가기
             <span className="material-symbols-outlined text-xl">calendar_month</span>
@@ -35,7 +35,7 @@ const BranchCard = ({
 
 const Branches: React.FC = () => {
     return (
-        <div id="features" className="mt-32">
+        <div id="branches" className="mt-32">
             <div className="text-center mb-16">
                 <span className="px-4 py-1.5 bg-white rounded-full text-[10px] font-black shadow-sm mb-4 inline-block uppercase tracking-widest">Our Studios</span>
                 <h3 className="text-5xl font-black text-black mb-4">가까운 지점을 선택하세요</h3>
@@ -46,19 +46,19 @@ const Branches: React.FC = () => {
                     name="천안점"
                     color="bg-accent-blue"
                     shadowColor="#1971C2"
-                    link="https://map.naver.com"
+                    link="https://map.naver.com/p/entry/place/1653778604"
                 />
                 <BranchCard
                     name="청주점"
                     color="bg-accent-purple"
                     shadowColor="#862E9C"
-                    link="https://map.naver.com"
+                    link="https://map.naver.com/p/entry/place/2020893608"
                 />
                 <BranchCard
                     name="대전점"
                     color="bg-accent-green"
                     shadowColor="#2F9E44"
-                    link="https://map.naver.com"
+                    link="https://map.naver.com/p/entry/place/2003916926"
                 />
             </div>
         </div>

@@ -5,6 +5,7 @@ import DemoSection from '@/components/DemoSection';
 import PriceSection from '@/components/PriceSection';
 import FranchiseSection from '@/components/FranchiseSection';
 import Footer from '@/components/Footer';
+import Chatbot from '@/components/Chatbot';
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
           <FranchiseSection />
         </main>
         <Footer />
+        <Chatbot />
       </div>
     </div>
   );
