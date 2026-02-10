@@ -106,15 +106,16 @@ export default function FinanceImportPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messages: [{
-                        role: 'user',
-                        content: `당신은 회계/재무 데이터 전문가입니다. 아래는 엑셀 파일에서 추출한 원본 데이터입니다.
+                    teamId: 'data',
+                    mode: 'team',
+                    history: [],
+                    message: `당신은 회계/재무 데이터 전문가입니다. 아래는 엑셀 파일에서 추출한 원본 데이터입니다.
 이 데이터에서 자금 거래 내역을 추출하고, 다음 JSON 배열 형식으로 정리해주세요.
 
 **매우 중요한 규칙:**
 - 반드시 JSON 배열만 출력하세요. 설명이나 마크다운 없이 순수 JSON만.
 - 날짜 형식: YYYY-MM-DD (날짜를 찾을 수 없으면 빈 문자열)
-- type: "매출" 또는 "지출" (입금/수입 → 매출, 출금/지출/비용 → 지출)
+- type: "매출" 또는 "지출" (입금/수입/매출 → 매출, 출금/지출/비용 → 지출)
 - amount: 숫자만 (양수)
 - client: 거래처/상호명 (없으면 빈 문자열)
 - description: 적요/내용/메모 (없으면 빈 문자열)
@@ -125,25 +126,22 @@ export default function FinanceImportPage() {
 
 원본 데이터:
 ${truncated}`
-                    }],
                 }),
             });
 
-            const responseText = await response.text();
-            // Extract JSON array from response
-            const jsonMatch = responseText.match(/\[[\s\S]*?\](?=\s*$|\s*```)/);
+            const data = await response.json();
+            const responseText = data.response || data.message || '';
+
+            // Extract JSON array from response (handle markdown code blocks too)
+            const cleaned = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+            const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
+
             if (!jsonMatch) {
-                // Try finding any JSON array in the response
-                const altMatch = responseText.match(/\[[\s\S]*\]/);
-                if (!altMatch) {
-                    setError('AI가 데이터를 파싱하지 못했습니다. 수동 모드를 시도해보세요.');
-                    setAiLoading(false);
-                    return;
-                }
-                parseAiResult(altMatch[0]);
-            } else {
-                parseAiResult(jsonMatch[0]);
+                setError('AI가 데이터를 파싱하지 못했습니다. 수동 모드를 시도해보세요.');
+                setAiLoading(false);
+                return;
             }
+            parseAiResult(jsonMatch[0]);
         } catch (err: any) {
             setError('AI 분석 실패: ' + err.message);
         }
