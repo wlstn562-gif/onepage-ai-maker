@@ -351,9 +351,9 @@ export default function PassportAnalyzer() {
             )}
 
             {/* LEFT: Photo Source Card */}
-            <div className="w-full max-w-[420px] lg:flex-shrink-0 z-10">
-                <div className="bg-[#2d2d2d] p-4 lg:p-5 rounded-[40px] shadow-2xl relative overflow-hidden ring-4 lg:ring-8 ring-white/20">
-                    <div className="relative aspect-[3/4] rounded-[30px] overflow-hidden bg-black/20 flex flex-col">
+            <div className="w-full max-w-[440px] lg:flex-shrink-0 z-10">
+                <div className="bg-white/40 backdrop-blur-xl p-4 lg:p-5 rounded-[48px] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] relative overflow-hidden border border-white/60">
+                    <div className="relative aspect-[3/4] rounded-[36px] overflow-hidden bg-gray-100 flex flex-col border border-gray-200/50 shadow-inner">
                         {!fileUrl || isFileLoading ? (
                             <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
                                 {isFileLoading ? (
@@ -406,11 +406,13 @@ export default function PassportAnalyzer() {
                 </div>
             </div>
 
-            {/* RIGHT: Phone Mockup */}
-            <div className="w-full max-w-[340px] lg:flex-shrink-0">
-                <div className="bg-black p-4 rounded-[65px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border-[8px] border-[#333] relative w-full h-[680px]">
+            {/* RIGHT: Phone Mockup - Titanium Silver Style */}
+            <div className="w-full max-w-[360px] lg:flex-shrink-0">
+                <div className="bg-[#f0f0f0] p-3 rounded-[68px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.2),inset_0_2px_4px_rgba(255,255,255,0.8)] border-[1px] border-[#d1d1d1] relative w-full h-[710px] flex items-center justify-center">
+                    {/* Inner Frame with gradient */}
+                    <div className="absolute inset-0 rounded-[68px] bg-gradient-to-br from-[#ffffff] via-[#e5e5e5] to-[#d4d4d4] -z-10" />
 
-                    <div className="bg-white rounded-[55px] overflow-hidden h-full flex flex-col relative shadow-inner">
+                    <div className="bg-white rounded-[58px] overflow-hidden w-full h-full flex flex-col relative shadow-[0_0_0_8px_#000000]">
                         <div className="absolute top-2 left-1/2 -translate-x-1/2 w-36 h-7 bg-black rounded-full z-20 flex items-center justify-center px-3">
                             <p className="text-white text-[10px] font-black tracking-tight">미리보기 (413×531)</p>
                             <div className="size-1.5 rounded-full bg-blue-500 absolute right-3 animate-pulse" />
@@ -446,41 +448,41 @@ export default function PassportAnalyzer() {
                             <div className="space-y-3 w-full mt-auto">
                                 {!fileUrl ? (
                                     <div className="space-y-3">
-                                        <label className="h-16 w-full bg-blue-600 hover:bg-blue-700 rounded-3xl cursor-pointer shadow-[0_6px_0_0_#1d4ed8] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center text-white font-black text-lg tracking-wider gap-3 group">
-                                            <span className="material-symbols-outlined text-2xl group-hover:animate-bounce">cloud_upload</span>
+                                        <label className="h-14 w-full bg-black hover:bg-zinc-800 rounded-2xl cursor-pointer shadow-lg active:scale-95 transition-all flex items-center justify-center text-white font-black text-base tracking-wider gap-3 group">
+                                            <span className="material-symbols-outlined text-xl group-hover:rotate-12 transition-transform">cloud_upload</span>
                                             사진 불러오기
                                             <input type="file" className="hidden" accept="image/*" onChange={handleFile} />
                                         </label>
-                                        <button onClick={() => setShowHelp(true)} className="h-14 w-full bg-zinc-100 hover:bg-zinc-200 rounded-2xl flex items-center justify-center text-zinc-500 font-bold text-sm transition-colors border-2 border-zinc-200">
+                                        <button onClick={() => setShowHelp(true)} className="h-12 w-full bg-zinc-50 hover:bg-zinc-100 rounded-xl flex items-center justify-center text-zinc-400 font-bold text-xs transition-colors border border-zinc-200/50">
                                             사용법 보기
                                         </button>
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="grid grid-cols-1 gap-2.5">
+                                        <div className="grid grid-cols-1 gap-2">
                                             <button
                                                 onClick={() => setMode('crown')}
-                                                className="h-14 w-full bg-[#f6ab1a] rounded-2xl shadow-[0_4px_0_0_#d97706] active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center text-white font-black text-sm tracking-wider gap-2"
+                                                className="h-12 w-full bg-zinc-900 rounded-2xl shadow-md active:scale-95 transition-all flex items-center justify-center text-white font-black text-xs tracking-wider gap-2"
                                             >
-                                                <span className="material-symbols-outlined text-xl">ads_click</span>
+                                                <span className="material-symbols-outlined text-lg">ads_click</span>
                                                 정수리 턱끝 설정
                                             </button>
 
                                             <button
                                                 onClick={removeBg}
                                                 disabled={isRemovingBg || !crown}
-                                                className="h-14 w-full bg-[#52a4ff] rounded-2xl shadow-[0_4px_0_0_#2b82e6] active:translate-y-0.5 active:shadow-none transition-all flex items-center justify-center text-white font-black text-sm tracking-wider gap-2 disabled:opacity-40"
+                                                className="h-12 w-full bg-blue-500 rounded-2xl shadow-md active:scale-95 transition-all flex items-center justify-center text-white font-black text-xs tracking-wider gap-2 disabled:opacity-40"
                                             >
-                                                <span className="material-symbols-outlined text-xl">auto_fix_high</span>
+                                                <span className="material-symbols-outlined text-lg">auto_fix_high</span>
                                                 배경 하얗게 처리
                                             </button>
 
                                             <button
                                                 onClick={download}
                                                 disabled={!crown || !chin || isRemovingBg}
-                                                className="h-16 w-full bg-[#a352ff] rounded-3xl shadow-[0_6px_0_0_#7c2be6] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center text-white font-black text-lg tracking-wider gap-2 disabled:opacity-40"
+                                                className="h-14 w-full bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center text-white font-black text-base tracking-wider gap-2 disabled:opacity-40"
                                             >
-                                                <span className="material-symbols-outlined text-2xl">payments</span>
+                                                <span className="material-symbols-outlined text-xl">payments</span>
                                                 3,900원 결제 후 다운로드
                                             </button>
                                         </div>
