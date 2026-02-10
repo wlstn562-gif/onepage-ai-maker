@@ -10,10 +10,19 @@ interface ChatMessage {
     teamId?: string;
 }
 
+interface Artifact {
+    id: string;
+    title: string;
+    type: 'code' | 'text' | 'image' | 'task';
+    content: string;
+    timestamp: string;
+}
+
 export default function StudioPage() {
     const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
     const [chatInput, setChatInput] = useState('');
     const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [artifacts, setArtifacts] = useState<Artifact[]>([]);
     const [loading, setLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -52,6 +61,32 @@ export default function StudioPage() {
                 teamId: activeTeamId
             };
             setMessages(prev => [...prev, aiMsg]);
+
+            // Simple Artifact Parsing: Detect code blocks or specific labels
+            if (data.response.includes('```')) {
+                const codeMatch = data.response.match(/```(\w+)?\n([\s\S]*?)```/);
+                if (codeMatch) {
+                    const newArtifact: Artifact = {
+                        id: Date.now().toString(),
+                        title: `${activeTeam?.name}의 결과물`,
+                        type: 'code',
+                        content: codeMatch[2],
+                        timestamp: new Date().toLocaleTimeString()
+                    };
+                    setArtifacts(prev => [newArtifact, ...prev]);
+                }
+            } else if (data.response.length > 100) {
+                // Large text could be an artifact
+                const newArtifact: Artifact = {
+                    id: Date.now().toString(),
+                    title: `${activeTeam?.name}의 보고서`,
+                    type: 'text',
+                    content: data.response,
+                    timestamp: new Date().toLocaleTimeString()
+                };
+                setArtifacts(prev => [newArtifact, ...prev]);
+            }
+
         } catch (e) {
             alert("Error sending message");
         } finally {
@@ -232,20 +267,45 @@ export default function StudioPage() {
 
                 </main>
 
-                {/* 3. Right Panel (Optional - Context/Tickets) */}
+                {/* 3. Right Panel (Artifacts) */}
                 <aside className="hidden w-80 flex-col border-l border-zinc-800 bg-zinc-950/50 lg:flex">
                     <div className="flex items-center justify-between border-b border-zinc-800 p-4">
-                        <span className="text-xs font-bold uppercase text-zinc-500 tracking-wider">Active Tickets</span>
-                        <span className="text-xs text-zinc-600">0 pending</span>
+                        <span className="text-xs font-bold uppercase text-zinc-500 tracking-wider">작업 결과물 (Artifacts)</span>
+                        <span className="text-xs text-zinc-600">{artifacts.length} items</span>
                     </div>
-                    <div className="flex-1 p-4">
-                        <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-zinc-800 p-4 text-center">
-                            <div className="space-y-2">
-                                <CheckCircle2 size={32} className="mx-auto text-zinc-700" />
-                                <p className="text-xs text-zinc-600">No active tickets.</p>
-                                <p className="text-[10px] text-zinc-700">Requests will appear here as tickets.</p>
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                        {artifacts.length === 0 ? (
+                            <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-zinc-800 p-4 text-center">
+                                <div className="space-y-2">
+                                    <CheckCircle2 size={32} className="mx-auto text-zinc-700" />
+                                    <p className="text-xs text-zinc-600">아직 결과물이 없습니다.</p>
+                                    <p className="text-[10px] text-zinc-700">대화를 통해 작업을 요청해보세요.</p>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            artifacts.map((art) => (
+                                <div key={art.id} className="group relative rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 hover:border-zinc-600 transition-all cursor-pointer">
+                                    <div className="mb-2 flex items-center justify-between">
+                                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${art.type === 'code' ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'
+                                            }`}>
+                                            {art.type}
+                                        </span>
+                                        <span className="text-[10px] text-zinc-500">{art.timestamp}</span>
+                                    </div>
+                                    <h4 className="text-xs font-bold text-zinc-200 line-clamp-1">{art.title}</h4>
+                                    <p className="mt-1 text-[11px] text-zinc-500 line-clamp-2">{art.content}</p>
+
+                                    <div className="absolute inset-0 bg-zinc-900/80 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-xl transition-opacity">
+                                        <button
+                                            onClick={() => navigator.clipboard.writeText(art.content)}
+                                            className="text-[11px] font-bold text-white bg-zinc-700 px-3 py-1.5 rounded-lg hover:bg-zinc-600"
+                                        >
+                                            내용 복사
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </aside>
 
