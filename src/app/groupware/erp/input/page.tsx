@@ -33,6 +33,7 @@ export default function SalesInputPage() {
     const [saved, setSaved] = useState(false);
     const [lastAutoSave, setLastAutoSave] = useState<string>('');
     const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const [pendingDraft, setPendingDraft] = useState<any>(null);
 
     // Load staff name from cookie
     useEffect(() => {
@@ -53,20 +54,34 @@ export default function SalesInputPage() {
             } catch { setStaffName(n); }
         }
 
-        // Restore draft from localStorage
+        // Check for draft — show dialog instead of auto-restoring
         try {
             const draft = localStorage.getItem(DRAFT_KEY);
             if (draft) {
                 const d = JSON.parse(draft);
-                if (d.date) setDate(d.date);
-                if (d.branch) setBranch(d.branch);
-                if (d.customer) setCustomer(d.customer);
-                if (d.items && d.items.length > 0) setItems(d.items);
-                if (d.staffName) setStaffName(d.staffName);
-                setLastAutoSave('임시저장 복원됨');
+                const hasData = d.items && d.items.some((item: any) => item.reservationName?.trim());
+                if (hasData) {
+                    setPendingDraft(d);
+                }
             }
         } catch { }
     }, []);
+
+    const applyDraft = () => {
+        if (!pendingDraft) return;
+        if (pendingDraft.date) setDate(pendingDraft.date);
+        if (pendingDraft.branch) setBranch(pendingDraft.branch);
+        if (pendingDraft.customer) setCustomer(pendingDraft.customer);
+        if (pendingDraft.items && pendingDraft.items.length > 0) setItems(pendingDraft.items);
+        if (pendingDraft.staffName) setStaffName(pendingDraft.staffName);
+        setLastAutoSave('임시저장 복원됨');
+        setPendingDraft(null);
+    };
+
+    const discardDraft = () => {
+        localStorage.removeItem(DRAFT_KEY);
+        setPendingDraft(null);
+    };
 
     // Auto-save draft function
     const saveDraft = useCallback(() => {
@@ -160,6 +175,46 @@ export default function SalesInputPage() {
 
     return (
         <div className="space-y-6">
+            {/* Draft Restore Dialog */}
+            {pendingDraft && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-amber-400">history</span>
+                            </div>
+                            <div>
+                                <h3 className="text-white font-bold">임시저장 데이터 발견</h3>
+                                <p className="text-xs text-zinc-500">이전에 작성 중이던 데이터가 있습니다</p>
+                            </div>
+                        </div>
+                        <div className="bg-zinc-800/50 rounded-lg p-3 mb-5 text-sm">
+                            <div className="flex justify-between text-zinc-400">
+                                <span>일자</span>
+                                <span className="text-white font-mono">{pendingDraft.date || '-'}</span>
+                            </div>
+                            <div className="flex justify-between text-zinc-400 mt-1">
+                                <span>지점</span>
+                                <span className="text-white">{pendingDraft.branch || '-'}</span>
+                            </div>
+                            <div className="flex justify-between text-zinc-400 mt-1">
+                                <span>입력 건수</span>
+                                <span className="text-white">{pendingDraft.items?.filter((i: any) => i.reservationName?.trim()).length || 0}건</span>
+                            </div>
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={discardDraft}
+                                className="flex-1 py-2.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 font-medium text-sm transition-colors">
+                                취소
+                            </button>
+                            <button onClick={applyDraft}
+                                className="flex-1 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm transition-colors">
+                                적용
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Page Header */}
             <div className="flex items-center justify-between">
                 <div>
