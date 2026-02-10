@@ -73,10 +73,10 @@ export default function GroupwareLayout({
         { name: '판매 입력', href: '/groupware/erp/input', icon: 'edit_note' },
         { name: '판매 조회', href: '/groupware/erp/list', icon: 'receipt_long' },
         { name: '매출 현황', href: '/groupware/erp/status', icon: 'calendar_month', adminOnly: true },
-        { name: 'AI 자금일보', href: '/groupware/erp/bank-parser', icon: 'smart_toy', adminOnly: true },
         { name: '── 자금 관리 ──', href: '', icon: '', divider: true, adminOnly: true },
-        { name: '자금 등록', href: '/groupware/erp/finance', icon: 'account_balance', adminOnly: true },
-        { name: '자금 대시보드', href: '/groupware/erp/finance/dashboard', icon: 'monitoring', adminOnly: true },
+        { name: '자금일보', href: '/groupware/erp/bank-parser', icon: 'account_balance', adminOnly: true },
+        { name: '월마감', href: '/groupware/erp/finance/dashboard', icon: 'monitoring', adminOnly: true },
+        { name: '자금 등록 (수동)', href: '/groupware/erp/finance', icon: 'edit_note', adminOnly: true },
         { name: '데이터 임포트', href: '/groupware/erp/finance/import', icon: 'upload_file', adminOnly: true },
     ].filter(item => !item.adminOnly || role === 'admin');
 

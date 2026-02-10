@@ -35,9 +35,9 @@ export default function FinanceDashboardPage() {
                 <div>
                     <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                         <span className="material-symbols-outlined text-blue-400">monitoring</span>
-                        자금 현황 대시보드
+                        월마감
                     </h2>
-                    <p className="text-sm text-zinc-500 mt-1">월마감, 프로젝트별 마진, 지출 분석</p>
+                    <p className="text-sm text-zinc-500 mt-1">자금일보 기반 월별 마감 · 프로젝트별 마진 · 지출 분석</p>
                 </div>
                 <div className="flex items-center gap-2">
                     <input
