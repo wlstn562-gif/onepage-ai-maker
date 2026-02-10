@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { SalesRecord, SalesItem, saveSalesRecord, generateId, BRANCHES, PAYMENT_TYPES, ITEM_NAMES, VISIT_ROUTES, formatCurrency } from '@/lib/erp-store';
+
+const DRAFT_KEY = 'erp-sales-input-draft';
 
 const emptyItem = (): SalesItem => ({
     reservationName: '',
@@ -29,6 +31,8 @@ export default function SalesInputPage() {
     const [customer, setCustomer] = useState('매장고객');
     const [items, setItems] = useState<SalesItem[]>([emptyItem(), emptyItem(), emptyItem()]);
     const [saved, setSaved] = useState(false);
+    const [lastAutoSave, setLastAutoSave] = useState<string>('');
+    const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // Load staff name from cookie
     useEffect(() => {
@@ -48,7 +52,53 @@ export default function SalesInputPage() {
                 setStaffName(decoded);
             } catch { setStaffName(n); }
         }
+
+        // Restore draft from localStorage
+        try {
+            const draft = localStorage.getItem(DRAFT_KEY);
+            if (draft) {
+                const d = JSON.parse(draft);
+                if (d.date) setDate(d.date);
+                if (d.branch) setBranch(d.branch);
+                if (d.customer) setCustomer(d.customer);
+                if (d.items && d.items.length > 0) setItems(d.items);
+                if (d.staffName) setStaffName(d.staffName);
+                setLastAutoSave('임시저장 복원됨');
+            }
+        } catch { }
     }, []);
+
+    // Auto-save draft function
+    const saveDraft = useCallback(() => {
+        try {
+            const draft = { date, staffName, branch, customer, items };
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+            const now = new Date();
+            setLastAutoSave(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')} 자동저장`);
+        } catch { }
+    }, [date, staffName, branch, customer, items]);
+
+    // Auto-save every 1 minute
+    useEffect(() => {
+        autoSaveTimerRef.current = setInterval(() => {
+            saveDraft();
+        }, 60000); // 1분
+        return () => {
+            if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
+        };
+    }, [saveDraft]);
+
+    // Save draft on tab close / refresh
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            try {
+                const draft = { date, staffName, branch, customer, items };
+                localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+            } catch { }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [date, staffName, branch, customer, items]);
 
     const updateItem = (index: number, field: keyof SalesItem, value: any) => {
         setItems(prev => {
@@ -100,6 +150,10 @@ export default function SalesInputPage() {
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
 
+        // Clear draft after successful save
+        localStorage.removeItem(DRAFT_KEY);
+        setLastAutoSave('');
+
         // Reset for next entry
         setItems([emptyItem(), emptyItem(), emptyItem()]);
     };
@@ -116,6 +170,12 @@ export default function SalesInputPage() {
                     <div className="flex items-center gap-2 bg-green-500/10 text-green-400 px-4 py-2 rounded-lg text-sm font-medium animate-pulse">
                         <span className="material-symbols-outlined text-[18px]">check_circle</span>
                         저장 완료!
+                    </div>
+                )}
+                {!saved && lastAutoSave && (
+                    <div className="flex items-center gap-2 text-zinc-500 text-xs">
+                        <span className="material-symbols-outlined text-[14px]">cloud_done</span>
+                        {lastAutoSave}
                     </div>
                 )}
             </div>
