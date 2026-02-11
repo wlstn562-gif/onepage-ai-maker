@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import {
     getAllTransactionsAsync, getMonthlySummaryAsync, getProjectSummaryAsync,
-    getCategoryBreakdownAsync, getMonthlyTrendAsync, formatCurrency
+    getCategoryBreakdownAsync, getMonthlyTrendAsync, getMonthlyReportAsync,
+    formatCurrency, MonthlyReport
 } from '@/lib/finance-store';
 
 export default function MonthlyClosingPage() {
@@ -11,6 +12,7 @@ export default function MonthlyClosingPage() {
     const currentYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const [selectedMonth, setSelectedMonth] = useState(currentYM);
     const [monthly, setMonthly] = useState<{ yearMonth: string; totalIncome: number; totalExpense: number; netProfit: number; count: number } | null>(null);
+    const [report, setReport] = useState<MonthlyReport | null>(null);
     const [projectData, setProjectData] = useState<{ project: string; income: number; expense: number; profit: number; margin: number; count: number }[]>([]);
     const [categoryData, setCategoryData] = useState<{ category: string; amount: number }[]>([]);
     const [trend, setTrend] = useState<{ month: string; income: number; expense: number; net: number }[]>([]);
@@ -19,6 +21,7 @@ export default function MonthlyClosingPage() {
     useEffect(() => {
         const load = async () => {
             setMonthly(await getMonthlySummaryAsync(selectedMonth));
+            setReport(await getMonthlyReportAsync(selectedMonth));
             setProjectData(await getProjectSummaryAsync());
             setCategoryData(await getCategoryBreakdownAsync(selectedMonth));
             setTrend(await getMonthlyTrendAsync(6));
@@ -81,6 +84,92 @@ export default function MonthlyClosingPage() {
                     <p className="text-xl font-bold text-amber-400 font-mono mt-1">{totalCount}건</p>
                 </div>
             </div>
+
+            {/* 📊 월간 손익 리포트 (11 items) */}
+            {report && (
+                <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                    <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-800/30">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                            <span className="material-symbols-outlined text-emerald-400">description</span>
+                            {selectedMonth.split('-')[1]}월 손익 계산서
+                        </h3>
+                        <span className="text-xs text-zinc-500">단위: 원</span>
+                    </div>
+                    <div className="p-6">
+                        <div className="space-y-1">
+                            {/* 1. 매출액 */}
+                            <div className="flex justify-between items-center py-2 border-b border-zinc-800/50">
+                                <span className="text-zinc-400">1. 매출액</span>
+                                <span className="text-lg font-bold text-blue-400">{formatCurrency(report.revenue)}</span>
+                            </div>
+
+                            {/* 2. 매출원가 */}
+                            <div className="flex justify-between items-center py-2 border-b border-zinc-800/50">
+                                <span className="text-zinc-400">2. 매출원가</span>
+                                <span className="font-mono text-zinc-300">{formatCurrency(report.cogs)}</span>
+                            </div>
+
+                            {/* 3. 판매관리비 */}
+                            <div className="flex justify-between items-center py-2 border-b border-zinc-800/50">
+                                <span className="text-zinc-400">3. 판매관리비</span>
+                                <span className="font-mono text-zinc-300">{formatCurrency(report.opex)}</span>
+                            </div>
+
+                            {/* 4. 영업이익 (Highlight) */}
+                            <div className="flex justify-between items-center py-3 border-b border-zinc-700 bg-zinc-800/20 px-2 rounded-lg my-2">
+                                <span className="text-zinc-200 font-bold">4. 영업이익</span>
+                                <span className={`text-xl font-bold font-mono ${report.opProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {formatCurrency(report.opProfit)}
+                                </span>
+                            </div>
+
+                            {/* 5. 영업외수익 */}
+                            <div className="flex justify-between items-center py-2 border-b border-zinc-800/50">
+                                <span className="text-zinc-400">5. 영업외수익</span>
+                                <span className="font-mono text-blue-300">{formatCurrency(report.nonOpIncome)}</span>
+                            </div>
+
+                            {/* 6. 영업외비용 */}
+                            <div className="flex justify-between items-center py-2 border-b border-zinc-800/50">
+                                <span className="text-zinc-400">6. 영업외비용</span>
+                                <span className="font-mono text-red-300">{formatCurrency(report.nonOpExpense)}</span>
+                            </div>
+
+                            {/* 7. 당기순이익 (Final Highlight) */}
+                            <div className="flex justify-between items-center py-4 border-y-2 border-zinc-700 bg-zinc-800/40 px-3 rounded-xl my-4">
+                                <span className="text-white font-bold text-lg">7. 당기순이익</span>
+                                <span className={`text-2xl font-bold font-mono ${report.netIncome >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                    {formatCurrency(report.netIncome)}
+                                </span>
+                            </div>
+
+                            {/* Analysis Metrics */}
+                            <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-zinc-800">
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-zinc-500">8. 한계이익</span>
+                                        <span className="text-zinc-300 font-mono">{formatCurrency(report.contributionMargin)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-zinc-500">9. 한계이익률</span>
+                                        <span className="text-zinc-300 font-mono">{report.contributionMarginRatio.toFixed(1)}%</span>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-zinc-500">10. 손익분기점 매출액</span>
+                                        <span className="text-zinc-300 font-mono">{formatCurrency(Math.round(report.breakEvenPoint))}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span className="text-zinc-500">11. 가수금</span>
+                                        <span className="text-amber-400 font-mono font-bold">{formatCurrency(report.suspendReceipt)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Two Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -23,9 +23,103 @@ const CATEGORIES = [
     '매출', '식대/복리후생', '인건비', '장비비', '소모품비',
     '여비교통비', '통신비', '광고선전비', '접대비', '수수료',
     '임대료', '기타운영비',
+    '원가(매입/외주)', '영업외수익', '영업외비용', '가수금'
 ];
 
 export { CATEGORIES };
+
+// ... (Rest of Util and DB Helper) ...
+
+// [Keep existing Util/DB Helper/Migration/Projects CRUD/Async Tx CRUD functions exactly as is]
+
+// ... (Skip to Statistics section to add getMonthlyReportAsync) ...
+
+// ===== Statistics =====
+
+export interface MonthlyReport {
+    revenue: number;        // 1. 매출액
+    cogs: number;          // 2. 매출원가
+    grossProfit: number;   // (매출총이익 - optional but good to have)
+    opex: number;          // 3. 판매관리비
+    opProfit: number;      // 4. 영업이익
+    nonOpIncome: number;   // 5. 영업외수익
+    nonOpExpense: number;  // 6. 영업외비용
+    netIncome: number;     // 7. 당기순이익
+    contributionMargin: number; // 8. 한계이익
+    contributionMarginRatio: number; // 9. 한계이익률
+    breakEvenPoint: number; // 10. 손익분기점 매출액
+    suspendReceipt: number; // 11. 가수금
+}
+
+export async function getMonthlyReportAsync(yearMonth: string): Promise<MonthlyReport> {
+    const all = await getAllTransactionsAsync();
+    const filtered = all.filter(t => t.trans_date.startsWith(yearMonth));
+
+    // 1. 매출액 (Revenue) - '매출' category only (exclude '영업외수익', '가수금')
+    const revenue = filtered
+        .filter(t => t.type === '매출' && t.category === '매출')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    // 2. 매출원가 (COGS) - '원가(매입/외주)', '장비비'
+    const cogs = filtered
+        .filter(t => t.type === '지출' && ['원가(매입/외주)', '장비비'].includes(t.category))
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    // 3. 판매관리비 (OpEx) - All other expenses except COGS and Non-Op
+    const opex = filtered
+        .filter(t => t.type === '지출' &&
+            !['원가(매입/외주)', '장비비', '영업외비용'].includes(t.category))
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    // 4. 영업이익 (Op Profit)
+    const opProfit = revenue - cogs - opex;
+
+    // 5. 영업외수익
+    const nonOpIncome = filtered
+        .filter(t => t.type === '매출' && t.category === '영업외수익')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    // 6. 영업외비용
+    const nonOpExpense = filtered
+        .filter(t => t.type === '지출' && t.category === '영업외비용')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    // 7. 당기순이익 (Net Income)
+    const netIncome = opProfit + nonOpIncome - nonOpExpense;
+
+    // 8. 한계이익 (Contribution Margin) = Revenue - Variable Costs
+    // Assumption: Variable Costs = COGS + 수수료 + 광고선전비
+    const variableOpex = filtered
+        .filter(t => t.type === '지출' && ['수수료', '광고선전비'].includes(t.category))
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    const variableCosts = cogs + variableOpex;
+    const contributionMargin = revenue - variableCosts;
+
+    // 9. 한계이익률 (%)
+    const contributionMarginRatio = revenue > 0 ? (contributionMargin / revenue) * 100 : 0;
+
+    // 10. 손익분기점 매출액 (BEP) = Fixed Costs / CM Ratio
+    // Fixed Costs = OpEx - Variable OpEx
+    const fixedCosts = opex - variableOpex;
+    const breakEvenPoint = contributionMarginRatio > 0
+        ? fixedCosts / (contributionMarginRatio / 100)
+        : 0; // If ratio is 0 or negative, BEP is undefined/infinite
+
+    // 11. 가수금
+    const suspendReceipt = filtered
+        .filter(t => t.type === '매출' && t.category === '가수금')
+        .reduce((sum, t) => sum + t.amount, 0);
+
+    return {
+        revenue, cogs, grossProfit: revenue - cogs, opex, opProfit,
+        nonOpIncome, nonOpExpense, netIncome,
+        contributionMargin, contributionMarginRatio, breakEvenPoint,
+        suspendReceipt
+    };
+}
+
+// [Rest of existing stats functions...]
 
 // ===== Util =====
 export function generateFinanceId(): string {
