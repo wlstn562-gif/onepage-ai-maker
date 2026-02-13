@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { getWeeklySummary, getMonthlyCalendarData, formatCurrency, BRANCHES } from '@/lib/erp-store';
 
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -96,7 +96,7 @@ export default function SalesStatusPage() {
                         </thead>
                         <tbody>
                             {weeks.map((week) => (
-                                <>
+                                <Fragment key={`week-${week.weekNum}`}>
                                     {/* Date row */}
                                     <tr key={`dates-${week.weekNum}`} className="bg-zinc-900/30">
                                         {week.days.map((day, dIdx) => {
@@ -138,7 +138,7 @@ export default function SalesStatusPage() {
                                             {week.total > 0 ? formatCurrency(week.total) : ''}
                                         </td>
                                     </tr>
-                                </>
+                                </Fragment>
                             ))}
                         </tbody>
                     </table>

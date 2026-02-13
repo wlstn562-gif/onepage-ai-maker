@@ -20,7 +20,7 @@ export default function DailyReportPage() {
     const [loading, setLoading] = useState(false);
 
     // List of accounts to show in summary
-    const accountList = ['086', '110', '청주', '726'];
+    const accountList = ['086', '110', '대전', '청주', '726'];
 
     useEffect(() => {
         (async () => {
@@ -89,7 +89,6 @@ export default function DailyReportPage() {
         // Current Balance:
         // If there are txs today, use the last tx's balance (Truth).
         // If no txs, use prevBalance.
-        // We still calc deposit/withdrawal for display.
         let currentBalance = prevBalance + deposit - withdrawal;
 
         if (accTxs.length > 0) {
@@ -97,6 +96,11 @@ export default function DailyReportPage() {
         }
 
         return { id: acc, prevBalance, deposit, withdrawal, currentBalance, hasTx: accTxs.length > 0 };
+    }).filter(acc => {
+        // HIDE if: Current Balance is 0 AND No transactions today
+        // This handles closed/inactive accounts like '대전' after its closing date.
+        if (acc.currentBalance === 0 && !acc.hasTx) return false;
+        return true;
     });
 
     const totalSummary = {

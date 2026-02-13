@@ -55,7 +55,7 @@ export const CATEGORIES = [
     '임대료', '인건비', '소모품비', '비품비', '소프트웨어', '광고비', '통신비', '보험료',
     '수도광열비', '차량유지비', '접대비', '기타운영비',
     '장비구입', '세금/공과금', '카드수수료', '식대비',
-    '자금이동', '가수금', '보증금', '세금환급',
+    '자금이동', '가수금', '보증금', '세금환급', '이자수익', '정부지원금', '여비교통비', '세무회계비', '차입금', '인테리어', '지급수수료', '관리비',
 ];
 
 // ─── Utils ──────────────────────────────────────────────────────────────────
@@ -213,6 +213,10 @@ function autoCategory(desc: string): string {
     if (d.includes('통신') || d.includes('kt') || d.includes('skt') || d.includes('인터넷')) return '통신비';
     if (d.includes('보험')) return '보험료';
     if (d.includes('세금') || d.includes('국세') || d.includes('지방세') || d.includes('부가세')) return '세금/공과금';
+
+    // New: 세무회계비 (Priority over general fees)
+    if (d.includes('세무') || d.includes('결산') || d.includes('기장') || d.includes('회계')) return '세무회계비';
+
     if (d.includes('카드') || d.includes('수수료')) return '카드수수료';
     if (d.includes('기름') || d.includes('주유') || d.includes('주차')) return '차량유지비';
     if (d.includes('네이버') || d.includes('스마트스토어')) return '기타매출';
@@ -227,7 +231,31 @@ function autoCategory(desc: string): string {
     if (d.includes('광고') || d.includes('마케팅')) return '광고비';
     if (d.includes('식대') || d.includes('식사') || d.includes('커피') || d.includes('배달') || d.includes('쿠팡이츠') || d.includes('배민') || d.includes('스낵') || d.includes('간식') || d.includes('위펀') || d.includes('편의점')) return '식대비';
     if (d.includes('이체') || d.includes('대체')) return '자금이동';
+
+    // Updated: 가수금 (Repayment '변제' also included)
+    if (d.includes('가수금') || d.includes('변제')) return '가수금';
+
     if (d.includes('환급') && (d.includes('국세') || d.includes('부가세') || d.includes('지방세') || d.includes('세무'))) return '세금환급';
+    if (d.includes('이자')) return '이자수익';
+    if (d.includes('지원금') || d.includes('장려금')) return '정부지원금';
+
+    // New: 여비교통비
+    if (d.includes('sr') || d.includes('ktx') || d.includes('택시') || d.includes('버스') || d.includes('지하철') || d.includes('철도') || d.includes('코레일') || d.includes('하이패스') || d.includes('톨게이트')) return '여비교통비';
+
+    // New: 차입금 (대출)
+    if (d.includes('대출') || d.includes('차입') || d.includes('원금') || d.includes('빌린')) return '차입금';
+
+    // New: 인테리어
+    if (d.includes('인테리어') || d.includes('공사') || d.includes('목공') || d.includes('전기공사') || d.includes('타일') || d.includes('도배') || d.includes('장판') || d.includes('페인트') || d.includes('조명')) return '인테리어';
+
+    // New: 지급수수료 (중개비 등)
+    if (d.includes('중개비') || d.includes('복비') || d.includes('수수료') || d.includes('컨설팅')) return '지급수수료';
+
+    // New: 관리비 (품목 및 건물 관리비)
+    if (d.includes('정수기') || d.includes('매직') || d.includes('코웨이') || d.includes('쿠쿠') || d.includes('청호') ||
+        d.includes('방역') || d.includes('세스코') || d.includes('캡스') || d.includes('adt') || d.includes('세콤') ||
+        d.includes('s1') || d.includes('관리비') || d.includes('주차비')) return '관리비';
+
     return '기타운영비';
 }
 

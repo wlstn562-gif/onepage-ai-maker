@@ -234,7 +234,7 @@ export default function MonthlyClosingPage() {
 function classify(cat: string) {
     if (['사진매출', '영상매출', '기타매출', '네이버페이', '카드매출'].includes(cat)) return 'revenue';
     if (['소모품비', '식대비', '장비구입', '원가'].includes(cat)) return 'cogs';
-    if (['자금이동', '가수금', '보증금', '출자금', '세금환급'].includes(cat)) return 'nonop';
+    if (['자금이동', '가수금', '보증금', '출자금', '세금환급', '이자수익', '정부지원금'].includes(cat)) return 'nonop';
     return 'opex';
 }
 

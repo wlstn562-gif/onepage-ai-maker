@@ -88,6 +88,7 @@ export default function ShinhanImportPage() {
                     >
                         <option value="086">086 (법인 메인)</option>
                         <option value="110">110 (서브)</option>
+                        <option value="대전">대전 (폐쇄)</option>
                         <option value="청주">청주 (지사)</option>
                         <option value="726">726 (기타)</option>
                     </select>
