@@ -1,402 +1,199 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState } from 'react';
 import * as XLSX from 'xlsx';
-import {
-    FinanceTransaction, saveTransactions, generateFinanceId, formatCurrency
-} from '@/lib/finance-store';
+import { BankTransaction, parseShinhanXlsx, saveTransactions, formatCurrency, applyClassificationRules } from '@/lib/finance-store';
 
-interface ExcelRow {
-    [key: string]: any;
-}
-
-export default function FinanceImportPage() {
-    const [mode, setMode] = useState<'manual' | 'ai'>('ai');
-    const [excelData, setExcelData] = useState<ExcelRow[]>([]);
-    const [rawText, setRawText] = useState('');
-    const [excelHeaders, setExcelHeaders] = useState<string[]>([]);
-    const [fileName, setFileName] = useState('');
-    const [dragOver, setDragOver] = useState(false);
-    const [error, setError] = useState('');
-    const [imported, setImported] = useState(false);
-    const [importedCount, setImportedCount] = useState(0);
+export default function ShinhanImportPage() {
+    // ... (state remains same)
     const [loading, setLoading] = useState(false);
-    const [aiLoading, setAiLoading] = useState(false);
-    const [preview, setPreview] = useState<FinanceTransaction[]>([]);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [message, setMessage] = useState('');
+    const [rawGrid, setRawGrid] = useState<any[][]>([]);
+    const [parsedTxs, setParsedTxs] = useState<BankTransaction[]>([]);
+    const [saveStats, setSaveStats] = useState<{ inserted: number; skipped: number } | null>(null);
+    const [fileName, setFileName] = useState('');
+    const [accountName, setAccountName] = useState('086');
 
-    // Column mapping state (manual mode)
-    const [colMap, setColMap] = useState({
-        trans_date: '', type: '', amount: '', client: '',
-        description: '', category: '', project_name: '',
-    });
-
-    const handleFile = useCallback((file: File) => {
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setLoading(true);
+        setMessage('');
+        setSaveStats(null);
         setFileName(file.name);
-        setError('');
-        setImported(false);
-        setPreview([]);
+
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (evt) => {
             try {
-                const data = new Uint8Array(e.target?.result as ArrayBuffer);
-                const workbook = XLSX.read(data, { type: 'array' });
+                const data = evt.target?.result;
+                const wb = XLSX.read(data, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const grid = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' }) as any[][];
+                setRawGrid(grid);
 
-                // For AI mode: convert ALL sheets to raw text
-                const allText: string[] = [];
-                workbook.SheetNames.forEach(name => {
-                    const sheet = workbook.Sheets[name];
-                    const csv = XLSX.utils.sheet_to_csv(sheet, { blankrows: false });
-                    allText.push(`[시트: ${name}]\n${csv}`);
-                });
-                setRawText(allText.join('\n\n'));
+                const txs = parseShinhanXlsx(grid, accountName);
 
-                // For manual mode: parse first sheet as JSON
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const json: ExcelRow[] = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-                if (json.length > 0) {
-                    const headers = Object.keys(json[0]);
-                    setExcelHeaders(headers);
-                    setExcelData(json);
+                // AI Learning: Apply learned rules
+                const optimizedTxs = await applyClassificationRules(txs);
 
-                    // Auto-map columns
-                    const autoMap = { ...colMap };
-                    const findCol = (keywords: string[]) =>
-                        headers.find(h => keywords.some(k => h.toLowerCase().includes(k))) || '';
-                    autoMap.trans_date = findCol(['날짜', '일자', 'date', 'trans_date']);
-                    autoMap.type = findCol(['구분', 'type', '유형']);
-                    autoMap.amount = findCol(['금액', 'amount', '입금', '출금']);
-                    autoMap.client = findCol(['거래처', 'client', '사용처']);
-                    autoMap.description = findCol(['적요', '내용', 'description', '설명']);
-                    autoMap.category = findCol(['카테고리', '계정', 'category', '과목']);
-                    autoMap.project_name = findCol(['프로젝트', 'project', '사업']);
-                    setColMap(autoMap);
-                }
-            } catch (err: any) {
-                setError('파일 읽기 실패: ' + err.message);
+                setParsedTxs(optimizedTxs);
+                setMessage(`✅ ${optimizedTxs.length}건의 거래가 추출되고 AI 규칙이 적용되었습니다.`);
+            } catch (err) {
+                setMessage(`❌ 파일 처리 오류: ${(err as Error).message}`);
+            } finally {
+                setLoading(false);
             }
         };
         reader.readAsArrayBuffer(file);
-    }, [colMap]);
-
-    const handleDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        setDragOver(false);
-        const file = e.dataTransfer.files?.[0];
-        if (file && /\.(xlsx|xls|csv)$/i.test(file.name)) {
-            handleFile(file);
-        } else {
-            setError('.xlsx, .xls, .csv 파일만 지원합니다.');
-        }
     };
 
-    // ========= AI Auto Analysis =========
-    const handleAiAnalyze = async () => {
-        if (!rawText.trim()) {
-            setError('먼저 파일을 업로드해주세요.');
-            return;
-        }
-        setAiLoading(true);
-        setError('');
-        try {
-            // Truncate if too long (max ~8000 chars for API)
-            const truncated = rawText.length > 8000 ? rawText.slice(0, 8000) + '\n\n... (이하 생략)' : rawText;
-
-            const response = await fetch('/api/studio/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    teamId: 'data',
-                    mode: 'team',
-                    history: [],
-                    message: `당신은 회계/재무 데이터 전문가입니다. 아래는 엑셀 파일에서 추출한 원본 데이터입니다.
-이 데이터에서 자금 거래 내역을 추출하고, 다음 JSON 배열 형식으로 정리해주세요.
-
-**매우 중요한 규칙:**
-- 반드시 JSON 배열만 출력하세요. 설명이나 마크다운 없이 순수 JSON만.
-- 날짜 형식: YYYY-MM-DD (날짜를 찾을 수 없으면 빈 문자열)
-- type: "매출" 또는 "지출" (입금/수입/매출 → 매출, 출금/지출/비용 → 지출)
-- amount: 숫자만 (양수)
-- client: 거래처/상호명 (없으면 빈 문자열)
-- description: 적요/내용/메모 (없으면 빈 문자열)
-- category: 다음 중 하나 선택 → 매출, 식대/복리후생, 인건비, 장비비, 소모품비, 여비교통비, 통신비, 광고선전비, 접대비, 수수료, 임대료, 기타운영비
-- project_name: 프로젝트명 (판단 불가하면 "공통운영")
-
-**데이터에서 합계행, 잔액행, 빈 행은 제외**하고 실제 거래 건만 추출하세요.
-
-원본 데이터:
-${truncated}`
-                }),
-            });
-
-            const data = await response.json();
-            const responseText = data.response || data.message || '';
-
-            // Extract JSON array from response (handle markdown code blocks too)
-            const cleaned = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-            const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
-
-            if (!jsonMatch) {
-                setError('AI가 데이터를 파싱하지 못했습니다. 수동 모드를 시도해보세요.');
-                setAiLoading(false);
-                return;
-            }
-            parseAiResult(jsonMatch[0]);
-        } catch (err: any) {
-            setError('AI 분석 실패: ' + err.message);
-        }
-        setAiLoading(false);
-    };
-
-    const parseAiResult = (jsonStr: string) => {
-        try {
-            const parsed = JSON.parse(jsonStr);
-            const txs: FinanceTransaction[] = parsed.map((item: any) => ({
-                id: generateFinanceId(),
-                trans_date: String(item.trans_date || item.date || ''),
-                type: String(item.type || '').includes('매출') || String(item.type || '').includes('입금') ? '매출' as const : '지출' as const,
-                amount: Math.abs(Number(String(item.amount || '0').replace(/[^0-9.-]/g, '')) || 0),
-                client: String(item.client || item.vendor || ''),
-                description: String(item.description || item.memo || item.note || ''),
-                category: String(item.category || '기타운영비'),
-                project_name: String(item.project_name || item.project || '공통운영'),
-                createdAt: new Date().toISOString(),
-            })).filter((tx: FinanceTransaction) => tx.amount > 0);
-
-            if (txs.length === 0) {
-                setError('AI가 유효한 거래 데이터를 찾지 못했습니다.');
-                return;
-            }
-            setPreview(txs);
-        } catch {
-            setError('AI 응답 파싱 실패. 수동 모드를 시도해보세요.');
-        }
-    };
-
-    // ========= Manual Preview =========
-    const handlePreview = () => {
-        const txs: FinanceTransaction[] = excelData.map(row => {
-            const rawType = String(row[colMap.type] || '지출');
-            const type: '매출' | '지출' = rawType.includes('매출') || rawType.includes('income') || rawType.includes('입금') ? '매출' : '지출';
-            const rawAmount = String(row[colMap.amount] || '0').replace(/[^0-9.-]/g, '');
-            return {
-                id: generateFinanceId(),
-                trans_date: String(row[colMap.trans_date] || ''),
-                type,
-                amount: Math.abs(Number(rawAmount) || 0),
-                client: String(row[colMap.client] || ''),
-                description: String(row[colMap.description] || ''),
-                category: String(row[colMap.category] || (type === '매출' ? '매출' : '기타운영비')),
-                project_name: String(row[colMap.project_name] || '공통운영'),
-                createdAt: new Date().toISOString(),
-            };
-        }).filter(tx => tx.amount > 0);
-        setPreview(txs);
-    };
-
-    // ========= Import =========
-    const handleImport = () => {
-        if (preview.length === 0) return;
+    const handleSave = async () => {
+        if (parsedTxs.length === 0) return;
         setLoading(true);
-        setTimeout(() => {
-            saveTransactions(preview);
-            setImportedCount(preview.length);
-            setImported(true);
+        setMessage('💾 저장 중...');
+        try {
+            const res = await saveTransactions(parsedTxs, true);
+            setSaveStats(res);
+            setParsedTxs([]);
+            setRawGrid([]);
+            setMessage('✅ 저장 완료!');
+        } catch {
+            setMessage('❌ 저장 실패');
+        } finally {
             setLoading(false);
-        }, 500);
+        }
     };
+
+    // Summary stats
+    const totalDeposit = parsedTxs.reduce((s, t) => s + t.deposit, 0);
+    const totalWithdrawal = parsedTxs.reduce((s, t) => s + t.withdrawal, 0);
+    const dateRange = parsedTxs.length > 0
+        ? `${parsedTxs[parsedTxs.length - 1].date} ~ ${parsedTxs[0].date}`
+        : '';
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                        <span className="material-symbols-outlined text-purple-400">upload_file</span>
-                        데이터 임포트
-                    </h2>
-                    <p className="text-sm text-zinc-500 mt-1">과거 자금일보 데이터를 업로드하여 일괄 등록합니다</p>
+        <div className="space-y-6 max-w-5xl">
+            <div>
+                <h2 className="text-2xl font-bold text-white">계좌내역 임포트</h2>
+                <p className="text-sm text-zinc-500 mt-1">신한은행 xlsx 파일에서 거래 내역을 자동으로 추출합니다</p>
+            </div>
+
+            {/* Account Selector & Upload Area */}
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8 space-y-4">
+                <div className="flex justify-center">
+                    <select
+                        value={accountName}
+                        onChange={(e) => setAccountName(e.target.value)}
+                        className="bg-zinc-800 border border-zinc-700 text-white text-sm rounded-lg px-4 py-2 outline-none focus:border-yellow-500"
+                    >
+                        <option value="086">086 (법인 메인)</option>
+                        <option value="110">110 (서브)</option>
+                        <option value="청주">청주 (지사)</option>
+                        <option value="726">726 (기타)</option>
+                    </select>
                 </div>
+
+                <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-800/50 hover:border-yellow-500/30 transition-all group">
+                    <span className="material-symbols-outlined text-3xl text-zinc-600 group-hover:text-yellow-500 mb-2">upload_file</span>
+                    <span className="text-sm font-bold text-zinc-400 group-hover:text-white">
+                        {fileName || '신한은행 xlsx 파일 선택'}
+                    </span>
+                    <span className="text-[10px] text-zinc-600 mt-1">계좌거래내역 엑셀 파일</span>
+                    <input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} />
+                </label>
             </div>
 
-            {/* Mode Toggle */}
-            <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1">
-                <button
-                    onClick={() => { setMode('ai'); setPreview([]); }}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${mode === 'ai' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'
-                        }`}
-                >
-                    <span className="material-symbols-outlined text-[18px]">smart_toy</span>
-                    AI 자동 분석
-                    <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded-full">추천</span>
-                </button>
-                <button
-                    onClick={() => { setMode('manual'); setPreview([]); }}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${mode === 'manual' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-white'
-                        }`}
-                >
-                    <span className="material-symbols-outlined text-[18px]">tune</span>
-                    수동 매핑
-                </button>
-            </div>
-
-            {imported && (
-                <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 flex items-center gap-3">
-                    <span className="material-symbols-outlined text-green-400 text-2xl">task_alt</span>
-                    <div>
-                        <p className="text-green-400 font-bold">{importedCount}건 임포트 완료!</p>
-                        <p className="text-xs text-zinc-400">대시보드에서 확인하세요</p>
-                    </div>
+            {/* Status Message */}
+            {message && (
+                <div className={`p-4 rounded-xl border text-sm font-bold ${message.includes('❌') ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
+                    {loading && <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-2 align-middle" />}
+                    {message}
                 </div>
             )}
 
-            {/* Upload Area */}
-            <div
-                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`bg-zinc-900/50 border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all ${dragOver ? 'border-purple-400 bg-purple-500/5' : 'border-zinc-700 hover:border-zinc-500'
-                    }`}
-            >
-                <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} className="hidden" />
-                <span className={`material-symbols-outlined text-4xl mb-3 block ${dragOver ? 'text-purple-400' : 'text-zinc-500'}`}>cloud_upload</span>
-                <p className="text-sm font-bold text-zinc-300">파일을 드래그하거나 클릭하여 업로드</p>
-                <p className="text-xs text-zinc-500 mt-1">.xlsx, .xls, .csv — 형식 상관없이 AI가 알아서 파악합니다</p>
-                {fileName && (
-                    <div className="mt-4 inline-flex items-center gap-2 bg-purple-500/10 text-purple-400 px-4 py-2 rounded-lg text-sm font-medium">
-                        <span className="material-symbols-outlined text-[18px]">description</span>
-                        {fileName} ({excelData.length}행)
-                    </div>
-                )}
-            </div>
-
-            {error && <p className="text-sm text-red-400 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">error</span>{error}</p>}
-
-            {/* AI Mode: Raw Preview + Analyze Button */}
-            {mode === 'ai' && rawText && preview.length === 0 && (
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
-                    <div className="px-4 py-3 bg-zinc-800/30 border-b border-zinc-800 flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-zinc-300 flex items-center gap-2">
-                            <span className="material-symbols-outlined text-[16px] text-purple-400">data_object</span>
-                            엑셀 원본 데이터 미리보기
-                        </h4>
-                        <span className="text-[10px] text-zinc-500">{rawText.length.toLocaleString()}자</span>
-                    </div>
-                    <pre className="p-4 text-xs text-zinc-400 max-h-[200px] overflow-y-auto font-mono whitespace-pre-wrap">
-                        {rawText.slice(0, 2000)}{rawText.length > 2000 && '\n\n... (이하 생략)'}
-                    </pre>
-                    <div className="px-4 py-3 bg-zinc-800/10 border-t border-zinc-800 flex items-center justify-between">
-                        <div className="text-xs text-zinc-500">
-                            💡 어떤 형식이든 AI가 자동으로 거래 내역을 추출합니다
+            {/* Save Stats */}
+            {saveStats && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <span className="material-symbols-outlined text-emerald-500 text-2xl">check_circle</span>
+                        <div>
+                            <div className="text-sm font-bold text-white">임포트 완료</div>
+                            <div className="text-xs text-zinc-500">중복 내역은 자동으로 제외되었습니다.</div>
                         </div>
-                        <button onClick={handleAiAnalyze} disabled={aiLoading}
-                            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 disabled:from-zinc-700 disabled:to-zinc-700 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition-all shadow-lg shadow-purple-600/20 disabled:shadow-none"
-                        >
-                            {aiLoading ? (
-                                <>
-                                    <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                                    AI 분석 중...
-                                </>
-                            ) : (
-                                <>
-                                    <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
-                                    🤖 AI 자동 분석 시작
-                                </>
-                            )}
-                        </button>
+                    </div>
+                    <div className="flex gap-6">
+                        <div className="text-center">
+                            <div className="text-xl font-black text-emerald-500">{saveStats.inserted}</div>
+                            <div className="text-[10px] text-zinc-500 font-bold">추가됨</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="text-xl font-black text-zinc-400">{saveStats.skipped}</div>
+                            <div className="text-[10px] text-zinc-500 font-bold">중복 제외</div>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* Manual Mode: Column Mapping */}
-            {mode === 'manual' && excelData.length > 0 && preview.length === 0 && (
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                    <h4 className="text-sm font-bold text-zinc-300 mb-4">🔗 컬럼 매핑 (자동 감지됨 — 수정 가능)</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {Object.entries(colMap).map(([key, val]) => (
-                            <div key={key}>
-                                <label className="block text-[10px] font-bold text-zinc-500 mb-1 uppercase">
-                                    {key === 'trans_date' ? '날짜' : key === 'type' ? '구분' : key === 'amount' ? '금액' :
-                                        key === 'client' ? '거래처' : key === 'description' ? '적요' :
-                                            key === 'category' ? '계정과목' : '프로젝트'}
-                                </label>
-                                <select
-                                    value={val}
-                                    onChange={e => setColMap(prev => ({ ...prev, [key]: e.target.value }))}
-                                    className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-white"
-                                >
-                                    <option value="">-- 선택 --</option>
-                                    {excelHeaders.map(h => (
-                                        <option key={h} value={h}>{h}</option>
-                                    ))}
-                                </select>
+            {/* Preview Table */}
+            {parsedTxs.length > 0 && (
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden">
+                    {/* Summary Header */}
+                    <div className="p-5 border-b border-zinc-800 flex items-center justify-between">
+                        <div>
+                            <h3 className="text-sm font-bold text-white">{parsedTxs.length}건 미리보기</h3>
+                            <p className="text-xs text-zinc-500 mt-0.5">{dateRange}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="text-right">
+                                <div className="text-[10px] text-zinc-500">입금 합계</div>
+                                <div className="text-sm font-bold text-emerald-500">+{formatCurrency(totalDeposit)}</div>
                             </div>
-                        ))}
-                    </div>
-                    <div className="mt-4 flex justify-between items-center">
-                        <p className="text-xs text-zinc-500">{excelData.length}행 감지됨</p>
-                        <button onClick={handlePreview}
-                            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-5 py-2 rounded-lg text-sm font-bold transition-colors">
-                            <span className="material-symbols-outlined text-[16px]">preview</span>
-                            미리보기
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Preview Table (Shared for both modes) */}
-            {preview.length > 0 && !imported && (
-                <div className="bg-zinc-900/50 border border-purple-500/30 rounded-xl overflow-hidden">
-                    <div className="px-4 py-3 bg-purple-500/5 border-b border-purple-500/20 flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-purple-400">
-                            ✨ {mode === 'ai' ? 'AI 분석' : '변환'} 결과 ({preview.length}건)
-                        </h4>
-                        <div className="flex items-center gap-2">
-                            <button onClick={() => setPreview([])}
-                                className="text-xs text-zinc-400 hover:text-white px-3 py-1.5 rounded border border-zinc-700 transition-colors">
-                                다시 분석
-                            </button>
-                            <button onClick={handleImport} disabled={loading}
-                                className="flex items-center gap-1 bg-green-600 hover:bg-green-500 disabled:bg-zinc-700 text-white px-5 py-2 rounded-lg text-xs font-bold transition-colors">
-                                <span className="material-symbols-outlined text-[16px]">{loading ? 'progress_activity' : 'database'}</span>
-                                {loading ? '저장 중...' : `${preview.length}건 일괄 저장`}
+                            <div className="text-right">
+                                <div className="text-[10px] text-zinc-500">출금 합계</div>
+                                <div className="text-sm font-bold text-red-400">-{formatCurrency(totalWithdrawal)}</div>
+                            </div>
+                            <button
+                                onClick={handleSave}
+                                disabled={loading}
+                                className="px-6 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl text-sm font-black transition-all flex items-center gap-2"
+                            >
+                                <span className="material-symbols-outlined text-[18px]">save</span> 저장
                             </button>
                         </div>
                     </div>
-                    <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-                        <table className="w-full text-xs">
-                            <thead className="sticky top-0">
-                                <tr className="bg-zinc-800">
-                                    <th className="px-2 py-2 text-left text-zinc-400 font-bold">#</th>
-                                    <th className="px-2 py-2 text-left text-zinc-400 font-bold">일자</th>
-                                    <th className="px-2 py-2 text-center text-zinc-400 font-bold">구분</th>
-                                    <th className="px-2 py-2 text-right text-zinc-400 font-bold">금액</th>
-                                    <th className="px-2 py-2 text-left text-zinc-400 font-bold">거래처</th>
-                                    <th className="px-2 py-2 text-left text-zinc-400 font-bold">적요</th>
-                                    <th className="px-2 py-2 text-left text-zinc-400 font-bold">계정과목</th>
-                                    <th className="px-2 py-2 text-left text-zinc-400 font-bold">프로젝트</th>
+
+                    {/* Table */}
+                    <div className="max-h-[500px] overflow-y-auto">
+                        <table className="w-full text-left">
+                            <thead className="sticky top-0 bg-zinc-900 z-10">
+                                <tr className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider border-b border-zinc-800">
+                                    <th className="px-4 py-3">날짜</th>
+                                    <th className="px-4 py-3">적요</th>
+                                    <th className="px-4 py-3">내용</th>
+                                    <th className="px-4 py-3 text-right">입금</th>
+                                    <th className="px-4 py-3 text-right">출금</th>
+                                    <th className="px-4 py-3 text-right">잔액</th>
+                                    <th className="px-4 py-3">분류</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                {preview.slice(0, 50).map((tx, i) => (
-                                    <tr key={i} className="border-t border-zinc-800/30 hover:bg-zinc-800/20">
-                                        <td className="px-2 py-1.5 text-zinc-500">{i + 1}</td>
-                                        <td className="px-2 py-1.5 text-zinc-300 font-mono">{tx.trans_date}</td>
-                                        <td className="px-2 py-1.5 text-center">
-                                            <span className={`px-1.5 py-0.5 rounded font-bold ${tx.type === '매출' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                                                {tx.type}
-                                            </span>
+                            <tbody className="divide-y divide-zinc-800/50">
+                                {parsedTxs.map((tx, idx) => (
+                                    <tr key={idx} className="hover:bg-white/5 transition-colors text-xs">
+                                        <td className="px-4 py-3 font-mono text-zinc-400 whitespace-nowrap">{tx.date}</td>
+                                        <td className="px-4 py-3 text-zinc-300 font-bold">{tx.summary}</td>
+                                        <td className="px-4 py-3 text-zinc-500 truncate max-w-[180px]">{tx.description}</td>
+                                        <td className="px-4 py-3 text-right font-mono text-emerald-500">
+                                            {tx.deposit > 0 ? `+${formatCurrency(tx.deposit)}` : ''}
                                         </td>
-                                        <td className="px-2 py-1.5 text-right text-white font-mono font-bold">{formatCurrency(tx.amount)}</td>
-                                        <td className="px-2 py-1.5 text-zinc-300">{tx.client}</td>
-                                        <td className="px-2 py-1.5 text-zinc-400 max-w-[200px] truncate">{tx.description}</td>
-                                        <td className="px-2 py-1.5 text-zinc-400">{tx.category}</td>
-                                        <td className="px-2 py-1.5"><span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400">{tx.project_name}</span></td>
+                                        <td className="px-4 py-3 text-right font-mono text-red-400">
+                                            {tx.withdrawal > 0 ? `-${formatCurrency(tx.withdrawal)}` : ''}
+                                        </td>
+                                        <td className="px-4 py-3 text-right font-mono text-zinc-400">{formatCurrency(tx.balance)}</td>
+                                        <td className="px-4 py-3">
+                                            <span className="px-2 py-0.5 rounded-md bg-zinc-800 text-[10px] font-bold text-zinc-400">{tx.category}</span>
+                                        </td>
                                     </tr>
                                 ))}
-                                {preview.length > 50 && (
-                                    <tr><td colSpan={8} className="px-2 py-2 text-center text-zinc-500">... 외 {preview.length - 50}건</td></tr>
-                                )}
                             </tbody>
                         </table>
                     </div>

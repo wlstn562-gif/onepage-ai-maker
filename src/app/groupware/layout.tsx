@@ -69,15 +69,22 @@ export default function GroupwareLayout({
     const menuItems = [
         { name: '대시보드', href: '/groupware', icon: 'dashboard' },
         { name: '내 연차 관리', href: '/groupware/leave', icon: 'event_available' },
+        { name: '── CEO 전용 ──', href: '', icon: '', divider: true, adminOnly: true },
+        { name: 'CEO Executive Room', href: '/admin/ceo?key=edsence_ceo', icon: 'shield_person', adminOnly: true },
         { name: '── 매출 관리 ──', href: '', icon: '', divider: true },
         { name: '판매 입력', href: '/groupware/erp/input', icon: 'edit_note' },
         { name: '판매 조회', href: '/groupware/erp/list', icon: 'receipt_long' },
+        { name: '재고 현황', href: '/groupware/erp/inventory', icon: 'inventory_2' },
         { name: '매출 현황', href: '/groupware/erp/status', icon: 'calendar_month', adminOnly: true },
         { name: '── 자금 관리 ──', href: '', icon: '', divider: true, adminOnly: true },
-        { name: '자금일보', href: '/groupware/erp/bank-parser', icon: 'account_balance', adminOnly: true },
-        { name: '월마감', href: '/groupware/erp/finance/dashboard', icon: 'monitoring', adminOnly: true },
-        { name: '자금 등록 (수동)', href: '/groupware/erp/finance', icon: 'edit_note', adminOnly: true },
-        { name: '데이터 임포트', href: '/groupware/erp/finance/import', icon: 'upload_file', adminOnly: true },
+        { name: '계좌내역 임포트', href: '/groupware/erp/finance/import', icon: 'upload_file', adminOnly: true },
+        { name: '자금 현황', href: '/groupware/erp/finance', icon: 'monitoring', adminOnly: true },
+        { name: '자금일보', href: '/groupware/erp/finance/daily', icon: 'calendar_today', adminOnly: true },
+        { name: '정산 대조', href: '/groupware/erp/finance/reconcile', icon: 'compare_arrows', adminOnly: true },
+        { name: '월마감', href: '/groupware/erp/finance/monthly', icon: 'summarize', adminOnly: true },
+        { name: '연간 리포트', href: '/groupware/erp/finance/annual', icon: 'bar_chart', adminOnly: true },
+        { name: '예산 계획', href: '/groupware/erp/finance/budget', icon: 'savings', adminOnly: true },
+        { name: '설정', href: '/groupware/erp/finance/settings', icon: 'settings', adminOnly: true },
     ].filter(item => !item.adminOnly || role === 'admin');
 
     if (role === 'admin') {

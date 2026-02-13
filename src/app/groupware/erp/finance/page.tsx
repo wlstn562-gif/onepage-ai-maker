@@ -1,288 +1,154 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import {
-    FinanceTransaction, saveTransaction, getProjects, addProject,
-    CATEGORIES, generateFinanceId, formatCurrency
-} from '@/lib/finance-store';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { getAllTransactions, BankTransaction, formatCurrency, getMonthlySummary } from '@/lib/finance-store';
 
-export default function FinanceInputPage() {
-    const today = new Date().toISOString().slice(0, 10);
+interface QuickStat {
+    label: string;
+    value: string;
+    sub: string;
+    icon: string;
+    color: string;
+}
 
-    const [transDate, setTransDate] = useState(today);
-    const [type, setType] = useState<'매출' | '지출'>('지출');
-    const [amount, setAmount] = useState('');
-    const [client, setClient] = useState('');
-    const [description, setDescription] = useState('');
-    const [category, setCategory] = useState('기타운영비');
-    const [projectName, setProjectName] = useState('공통운영');
-    const [projects, setProjects] = useState<string[]>([]);
-    const [newProject, setNewProject] = useState('');
-    const [showNewProject, setShowNewProject] = useState(false);
-    const [saved, setSaved] = useState(false);
-    const [recentTx, setRecentTx] = useState<FinanceTransaction[]>([]);
+export default function FinanceDashboard() {
+    const [txCount, setTxCount] = useState(0);
+    const [todayStats, setTodayStats] = useState({ deposit: 0, withdrawal: 0 });
+    const [monthStats, setMonthStats] = useState({ deposit: 0, withdrawal: 0, net: 0, count: 0 });
+    const [lastBalance, setLastBalance] = useState(0);
+    const [recentTxs, setRecentTxs] = useState<BankTransaction[]>([]);
 
     useEffect(() => {
-        setProjects(getProjects());
+        (async () => {
+            const all = await getAllTransactions();
+            setTxCount(all.length);
+
+            // Today
+            const today = new Date().toISOString().slice(0, 10);
+            const todayTxs = all.filter(t => t.date === today);
+            setTodayStats({
+                deposit: todayTxs.reduce((s, t) => s + t.deposit, 0),
+                withdrawal: todayTxs.reduce((s, t) => s + t.withdrawal, 0),
+            });
+
+            // This month
+            const ym = today.slice(0, 7);
+            const summary = await getMonthlySummary(ym);
+            setMonthStats({
+                deposit: summary.totalDeposit,
+                withdrawal: summary.totalWithdrawal,
+                net: summary.netAmount,
+                count: summary.txCount,
+            });
+
+            // Last balance
+            const sorted = [...all].sort((a, b) => (a.date + a.id).localeCompare(b.date + b.id));
+            if (sorted.length > 0) {
+                setLastBalance(sorted[sorted.length - 1].balance);
+            }
+
+            // Recent 8
+            setRecentTxs(sorted.slice(-8).reverse());
+        })();
     }, []);
 
-    // Format amount with commas
-    const handleAmountChange = (val: string) => {
-        const num = val.replace(/[^0-9]/g, '');
-        setAmount(num);
-    };
+    const today = new Date().toISOString().slice(0, 10);
+    const ym = today.slice(0, 7);
 
-    const displayAmount = amount ? Number(amount).toLocaleString('ko-KR') : '';
+    const stats: QuickStat[] = [
+        { label: '현재 잔액', value: `₩${formatCurrency(lastBalance)}`, sub: '전체 계좌 합계', icon: 'account_balance', color: 'text-yellow-500' },
+        { label: '오늘 입출금', value: `+${formatCurrency(todayStats.deposit)} / -${formatCurrency(todayStats.withdrawal)}`, sub: `${today}`, icon: 'today', color: 'text-blue-400' },
+        { label: '이번달 입출금', value: `+${formatCurrency(monthStats.deposit)} / -${formatCurrency(monthStats.withdrawal)}`, sub: `${ym} 누적`, icon: 'calendar_month', color: 'text-purple-400' },
+        { label: '당월 순이익', value: `₩${formatCurrency(monthStats.net)}`, sub: monthStats.net >= 0 ? '흑자' : '적자', icon: 'monitoring', color: monthStats.net >= 0 ? 'text-emerald-400' : 'text-red-400' },
+    ];
 
-    const handleAddProject = () => {
-        if (newProject.trim()) {
-            addProject(newProject.trim());
-            setProjects(getProjects());
-            setProjectName(newProject.trim());
-            setNewProject('');
-            setShowNewProject(false);
-        }
-    };
-
-    const handleSave = () => {
-        if (!amount || Number(amount) === 0) {
-            alert('금액을 입력해주세요.');
-            return;
-        }
-        if (!client.trim()) {
-            alert('거래처를 입력해주세요.');
-            return;
-        }
-
-        const tx: FinanceTransaction = {
-            id: generateFinanceId(),
-            trans_date: transDate,
-            type,
-            amount: Number(amount),
-            client: client.trim(),
-            description: description.trim(),
-            category: type === '매출' ? '매출' : category,
-            project_name: projectName,
-            createdAt: new Date().toISOString(),
-        };
-
-        saveTransaction(tx);
-        setRecentTx(prev => [tx, ...prev].slice(0, 5));
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
-
-        // Reset form
-        setAmount('');
-        setClient('');
-        setDescription('');
-    };
+    const menuItems = [
+        { href: '/groupware/erp/finance/import', label: '계좌내역 임포트', icon: 'upload_file', desc: '신한은행 xlsx 업로드' },
+        { href: '/groupware/erp/finance/list', label: '전체 거래내역', icon: 'list_alt', desc: '조회/수정/삭제' },
+        { href: '/groupware/erp/finance/daily', label: '자금일보', icon: 'calendar_today', desc: '일일 입출금 조회' },
+        { href: '/groupware/erp/finance/reconcile', label: '정산 대조', icon: 'compare_arrows', desc: '카드/네이버페이 매칭' },
+        { href: '/groupware/erp/finance/monthly', label: '월마감', icon: 'event_note', desc: '월간 손익 요약' },
+        { href: '/groupware/erp/finance/annual', label: '연간 리포트', icon: 'bar_chart', desc: '12개월 추이' },
+        { href: '/groupware/erp/finance/budget', label: '예산 계획', icon: 'savings', desc: '예산 대 실적' },
+    ];
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 max-w-6xl">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                        <span className="material-symbols-outlined text-emerald-400">account_balance</span>
-                        자금 등록
-                    </h2>
-                    <p className="text-sm text-zinc-500 mt-1">매출/지출 내역을 등록합니다</p>
+                    <h2 className="text-2xl font-bold text-white">자금 관리</h2>
+                    <p className="text-sm text-zinc-500 mt-0.5">등록 거래 {txCount.toLocaleString()}건</p>
                 </div>
-                {saved && (
-                    <div className="flex items-center gap-2 bg-green-500/10 text-green-400 px-4 py-2 rounded-lg text-sm font-medium animate-pulse">
-                        <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                        저장 완료!
-                    </div>
-                )}
+                <Link href="/groupware/erp/finance/settings"
+                    className="p-2 rounded-lg hover:bg-zinc-800 transition-colors">
+                    <span className="material-symbols-outlined text-zinc-500">settings</span>
+                </Link>
             </div>
 
-            {/* Input Form */}
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {/* 날짜 */}
-                    <div>
-                        <label className="block text-xs font-bold text-zinc-400 mb-2">날짜</label>
-                        <input
-                            type="date"
-                            value={transDate}
-                            onChange={e => setTransDate(e.target.value)}
-                            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500/50"
-                        />
-                    </div>
-
-                    {/* 구분 */}
-                    <div>
-                        <label className="block text-xs font-bold text-zinc-400 mb-2">구분</label>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setType('매출')}
-                                className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${type === '매출'
-                                        ? 'bg-green-500 text-black shadow-lg shadow-green-500/20'
-                                        : 'bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700'
-                                    }`}
-                            >
-                                📈 입금 (매출)
-                            </button>
-                            <button
-                                onClick={() => setType('지출')}
-                                className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${type === '지출'
-                                        ? 'bg-red-500 text-white shadow-lg shadow-red-500/20'
-                                        : 'bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700'
-                                    }`}
-                            >
-                                📉 출금 (지출)
-                            </button>
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {stats.map((s, i) => (
+                    <div key={i} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors">
+                        <div className="flex items-center gap-2 mb-3">
+                            <span className={`material-symbols-outlined text-[18px] ${s.color}`}>{s.icon}</span>
+                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{s.label}</span>
                         </div>
+                        <div className="text-lg font-black text-white">{s.value}</div>
+                        <div className="text-[10px] text-zinc-600 mt-1">{s.sub}</div>
                     </div>
+                ))}
+            </div>
 
-                    {/* 금액 */}
-                    <div>
-                        <label className="block text-xs font-bold text-zinc-400 mb-2">금액</label>
-                        <div className="relative">
-                            <input
-                                type="text"
-                                value={displayAmount}
-                                onChange={e => handleAmountChange(e.target.value)}
-                                placeholder="0"
-                                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-white font-mono text-right pr-10 focus:ring-2 focus:ring-emerald-500/50"
-                            />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">원</span>
+            {/* Menu Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                {menuItems.map((item, i) => (
+                    <Link key={i} href={item.href}
+                        className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-5 hover:bg-zinc-800/80 hover:border-yellow-500/20 transition-all group">
+                        <span className="material-symbols-outlined text-2xl text-zinc-600 group-hover:text-yellow-500 transition-colors">{item.icon}</span>
+                        <div className="mt-3">
+                            <div className="text-sm font-bold text-white">{item.label}</div>
+                            <div className="text-[10px] text-zinc-500 mt-0.5">{item.desc}</div>
                         </div>
-                    </div>
-
-                    {/* 거래처 */}
-                    <div>
-                        <label className="block text-xs font-bold text-zinc-400 mb-2">거래처</label>
-                        <input
-                            type="text"
-                            value={client}
-                            onChange={e => setClient(e.target.value)}
-                            placeholder="거래처명 입력"
-                            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500/50"
-                        />
-                    </div>
-
-                    {/* 적요 */}
-                    <div>
-                        <label className="block text-xs font-bold text-zinc-400 mb-2">적요 (내용)</label>
-                        <input
-                            type="text"
-                            value={description}
-                            onChange={e => setDescription(e.target.value)}
-                            placeholder="상세 내용 입력"
-                            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500/50"
-                        />
-                    </div>
-
-                    {/* 계정과목 (지출일 때만) */}
-                    {type === '지출' && (
-                        <div>
-                            <label className="block text-xs font-bold text-zinc-400 mb-2">계정과목</label>
-                            <select
-                                value={category}
-                                onChange={e => setCategory(e.target.value)}
-                                className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500/50"
-                            >
-                                {CATEGORIES.filter(c => c !== '매출').map(c => (
-                                    <option key={c} value={c}>{c}</option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
-
-                    {/* 관련 프로젝트 */}
-                    <div className={type === '매출' ? 'md:col-span-2' : ''}>
-                        <label className="block text-xs font-bold text-zinc-400 mb-2">관련 프로젝트</label>
-                        <div className="flex gap-2">
-                            <select
-                                value={projectName}
-                                onChange={e => {
-                                    if (e.target.value === '__new__') {
-                                        setShowNewProject(true);
-                                    } else {
-                                        setProjectName(e.target.value);
-                                    }
-                                }}
-                                className="flex-1 bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2.5 text-sm text-white focus:ring-2 focus:ring-emerald-500/50"
-                            >
-                                {projects.map(p => (
-                                    <option key={p} value={p}>{p}</option>
-                                ))}
-                                <option value="__new__">＋ 신규 프로젝트 추가</option>
-                            </select>
-                        </div>
-                        {showNewProject && (
-                            <div className="flex gap-2 mt-2">
-                                <input
-                                    type="text"
-                                    value={newProject}
-                                    onChange={e => setNewProject(e.target.value)}
-                                    placeholder="새 프로젝트명"
-                                    className="flex-1 bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500/50"
-                                    onKeyDown={e => e.key === 'Enter' && handleAddProject()}
-                                />
-                                <button onClick={handleAddProject}
-                                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors">
-                                    추가
-                                </button>
-                                <button onClick={() => setShowNewProject(false)}
-                                    className="px-3 py-2 bg-zinc-700 text-zinc-400 rounded-lg text-xs transition-colors">
-                                    취소
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Save Button */}
-                <div className="mt-6 flex justify-end">
-                    <button
-                        onClick={handleSave}
-                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3 rounded-lg text-sm font-bold transition-colors shadow-lg shadow-emerald-600/20"
-                    >
-                        <span className="material-symbols-outlined text-[18px]">save</span>
-                        저장
-                    </button>
-                </div>
+                    </Link>
+                ))}
             </div>
 
             {/* Recent Transactions */}
-            {recentTx.length > 0 && (
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
-                    <div className="px-4 py-3 bg-zinc-800/30 border-b border-zinc-800">
-                        <h4 className="text-sm font-bold text-zinc-300">📋 방금 등록한 내역</h4>
+            {recentTxs.length > 0 && (
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden">
+                    <div className="p-4 border-b border-zinc-800">
+                        <h3 className="text-sm font-bold text-white">최근 거래</h3>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="bg-zinc-800/20">
-                                    <th className="px-3 py-2 text-left text-xs font-bold text-zinc-400">일자</th>
-                                    <th className="px-3 py-2 text-center text-xs font-bold text-zinc-400">구분</th>
-                                    <th className="px-3 py-2 text-right text-xs font-bold text-zinc-400">금액</th>
-                                    <th className="px-3 py-2 text-left text-xs font-bold text-zinc-400">거래처</th>
-                                    <th className="px-3 py-2 text-left text-xs font-bold text-zinc-400">적요</th>
-                                    <th className="px-3 py-2 text-left text-xs font-bold text-zinc-400">프로젝트</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {recentTx.map(tx => (
-                                    <tr key={tx.id} className="border-t border-zinc-800/30">
-                                        <td className="px-3 py-2 text-zinc-300 text-xs font-mono">{tx.trans_date}</td>
-                                        <td className="px-3 py-2 text-center">
-                                            <span className={`text-xs px-2 py-0.5 rounded font-bold ${tx.type === '매출' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                                                {tx.type}
-                                            </span>
-                                        </td>
-                                        <td className="px-3 py-2 text-right font-mono text-xs font-bold text-white">{formatCurrency(tx.amount)}</td>
-                                        <td className="px-3 py-2 text-zinc-300 text-xs">{tx.client}</td>
-                                        <td className="px-3 py-2 text-zinc-400 text-xs">{tx.description}</td>
-                                        <td className="px-3 py-2">
-                                            <span className="text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-medium">{tx.project_name}</span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className="divide-y divide-zinc-800/50">
+                        {recentTxs.map((tx, idx) => (
+                            <div key={idx} className="px-4 py-3 flex items-center justify-between text-xs hover:bg-white/5 transition-colors">
+                                <div className="flex items-center gap-3">
+                                    <span className="font-mono text-zinc-600 w-20">{tx.date}</span>
+                                    <span className="text-zinc-300 font-bold">{tx.description || tx.summary}</span>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <span className={`font-mono font-bold ${tx.deposit > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                        {tx.deposit > 0 ? `+${formatCurrency(tx.deposit)}` : `-${formatCurrency(tx.withdrawal)}`}
+                                    </span>
+                                    <span className="font-mono text-zinc-600 w-24 text-right">{formatCurrency(tx.balance)}</span>
+                                </div>
+                            </div>
+                        ))}
                     </div>
+                </div>
+            )}
+
+            {/* Empty State */}
+            {txCount === 0 && (
+                <div className="text-center py-16 bg-zinc-900/30 border border-zinc-800 rounded-2xl">
+                    <span className="material-symbols-outlined text-4xl text-zinc-700 mb-3 block">inbox</span>
+                    <div className="text-sm font-bold text-zinc-500 mb-1">거래 내역이 없습니다</div>
+                    <div className="text-xs text-zinc-600 mb-4">신한은행 xlsx 파일을 임포트하여 시작하세요</div>
+                    <Link href="/groupware/erp/finance/import"
+                        className="inline-flex items-center gap-2 px-5 py-2 bg-yellow-500 hover:bg-yellow-400 text-black text-sm font-black rounded-xl transition-all">
+                        <span className="material-symbols-outlined text-[16px]">upload_file</span> 임포트 시작
+                    </Link>
                 </div>
             )}
         </div>

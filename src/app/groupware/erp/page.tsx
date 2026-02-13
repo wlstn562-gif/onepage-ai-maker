@@ -23,6 +23,7 @@ export default function ErpDashboard() {
         { name: '판매 입력', href: '/groupware/erp/input', icon: 'edit_note', color: 'from-blue-500 to-blue-600', desc: '오늘의 매출 전표 작성' },
         { name: '판매 조회', href: '/groupware/erp/list', icon: 'receipt_long', color: 'from-emerald-500 to-emerald-600', desc: '일자별 전표 리스트 확인' },
         { name: '매출 현황', href: '/groupware/erp/status', icon: 'calendar_month', color: 'from-amber-500 to-amber-600', desc: '월간 달력 매출 현황판' },
+        { name: '재고 현황', href: '/groupware/erp/inventory', icon: 'inventory_2', color: 'from-orange-500 to-orange-600', desc: '실시간 소모품 및 상품 재고 관리' },
         { name: 'AI 자금일보', href: '/groupware/erp/bank-parser', icon: 'smart_toy', color: 'from-purple-500 to-purple-600', desc: '은행 문자 자동 분류' },
     ];
 

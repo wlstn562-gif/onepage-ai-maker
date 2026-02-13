@@ -48,13 +48,13 @@ export default function SalesListPage() {
                 <div className="flex flex-wrap items-end gap-4">
                     <div>
                         <label className="block text-xs font-medium text-zinc-500 mb-1">시작일</label>
-                        <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)}
+                        <input type="date" value={filterDateFrom} min="2021-01-01" onChange={e => setFilterDateFrom(e.target.value)}
                             className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500/50" />
                     </div>
                     <span className="text-zinc-500 pb-2">~</span>
                     <div>
                         <label className="block text-xs font-medium text-zinc-500 mb-1">종료일</label>
-                        <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)}
+                        <input type="date" value={filterDateTo} min="2021-01-01" onChange={e => setFilterDateTo(e.target.value)}
                             className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500/50" />
                     </div>
                     <div>

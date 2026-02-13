@@ -122,6 +122,25 @@ export default function Home() {
                         입장하기 <span className="ml-2">→</span>
                     </div>
                 </Link>
+
+                {/* Card 4: CEO Executive Room (Admin Only) */}
+                {isLoggedIn && (
+                    <Link
+                        href="/admin/ceo?key=edsence_ceo"
+                        className="group relative flex h-80 flex-col justify-between overflow-hidden rounded-2xl bg-zinc-900 p-6 transition-all hover:scale-[1.02] hover:bg-zinc-800 hover:ring-2 hover:ring-yellow-500/50 border border-yellow-500/10"
+                    >
+                        <div className="z-10">
+                            <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-600 group-hover:from-yellow-400 group-hover:to-yellow-700">Executive AI</h2>
+                            <p className="mt-2 text-sm text-zinc-400">CEO 전용 의사결정 대시보드</p>
+                        </div>
+                        <div className="absolute right-0 top-0 h-full w-full opacity-5 transition-opacity group-hover:opacity-10">
+                            <div className="h-full w-full bg-gradient-to-br from-yellow-500 to-transparent" />
+                        </div>
+                        <div className="z-10 mt-auto flex items-center text-sm font-bold text-yellow-500 group-hover:text-yellow-400">
+                            PRIVATE ROOM <span className="ml-2">→</span>
+                        </div>
+                    </Link>
+                )}
             </main>
 
             <footer className="mt-16 text-center text-xs text-zinc-600">
