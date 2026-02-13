@@ -525,26 +525,28 @@ export async function clearTransactions(): Promise<void> {
 // ─── Export / Import Backup ─────────────────────────────────────────────────
 
 export async function exportAllData(): Promise<string> {
-    const [txs, settlements, budgets] = await Promise.all([
+    const [txs, settlements, budgets, rules] = await Promise.all([
         getAllTransactions(),
         getAllSettlements(),
         getAllBudgets(),
+        getAllRules(),
     ]);
-    return JSON.stringify({ transactions: txs, settlements, budgets, exportedAt: new Date().toISOString() }, null, 2);
+    return JSON.stringify({ transactions: txs, settlements, budgets, rules, exportedAt: new Date().toISOString() }, null, 2);
 }
 
-export async function importBackup(json: string): Promise<{ txCount: number; settleCount: number; budgetCount: number }> {
+export async function importBackup(json: string): Promise<{ txCount: number; settleCount: number; budgetCount: number; ruleCount: number }> {
     const data = JSON.parse(json);
     const db = await openDB();
 
     return new Promise((resolve, reject) => {
-        const tx = db.transaction([TX_STORE, SETTLE_STORE, BUDGET_STORE], 'readwrite');
+        const tx = db.transaction([TX_STORE, SETTLE_STORE, BUDGET_STORE, RULES_STORE], 'readwrite');
 
         const txStore = tx.objectStore(TX_STORE);
         const settleStore = tx.objectStore(SETTLE_STORE);
         const budgetStore = tx.objectStore(BUDGET_STORE);
+        const rulesStore = tx.objectStore(RULES_STORE);
 
-        let txCount = 0, settleCount = 0, budgetCount = 0;
+        let txCount = 0, settleCount = 0, budgetCount = 0, ruleCount = 0;
 
         if (data.transactions) {
             for (const t of data.transactions) { txStore.put(t); txCount++; }
@@ -555,8 +557,11 @@ export async function importBackup(json: string): Promise<{ txCount: number; set
         if (data.budgets) {
             for (const b of data.budgets) { budgetStore.put(b); budgetCount++; }
         }
+        if (data.rules) {
+            for (const r of data.rules) { rulesStore.put(r); ruleCount++; }
+        }
 
-        tx.oncomplete = () => resolve({ txCount, settleCount, budgetCount });
+        tx.oncomplete = () => resolve({ txCount, settleCount, budgetCount, ruleCount });
         tx.onerror = () => reject(tx.error);
     });
 }
