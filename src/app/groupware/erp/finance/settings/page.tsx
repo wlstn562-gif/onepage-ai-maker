@@ -1,12 +1,26 @@
 'use client';
 
-import { useState } from 'react';
-import { clearAllData, clearTransactions, exportAllData, importBackup, getAllTransactions, restoreCategoriesFromBackup, pushToCloud, pullFromCloud } from '@/lib/finance-store';
+import { useState, useEffect } from 'react';
+import { clearAllData, clearTransactions, exportAllData, importBackup, getAllTransactions, restoreCategoriesFromBackup, pushToCloud, pullFromCloud, getAllSettlements } from '@/lib/finance-store';
 
 export default function SettingsPage() {
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
-    const [txCount, setTxCount] = useState<number | null>(null);
+    const [localCounts, setLocalCounts] = useState<{ transactions: number; settlements: number } | null>(null);
+
+    useEffect(() => {
+        loadLocalCounts();
+    }, []);
+
+    const loadLocalCounts = async () => {
+        try {
+            const txs = await getAllTransactions();
+            const settles = await getAllSettlements();
+            setLocalCounts({ transactions: txs.length, settlements: settles.length });
+        } catch (err) {
+            console.error('Failed to load local counts:', err);
+        }
+    };
 
     const handlePush = async () => {
         if (!confirm('현재 이 기기의 데이터를 클라우드 서버로 올립니다. 기존 서버 데이터는 덮어씌워집니다. 계속하시겠습니까?')) return;
@@ -14,6 +28,7 @@ export default function SettingsPage() {
         try {
             const stats = await pushToCloud();
             setMessage(`✅ 성공적으로 클라우드 서버에 저장되었습니다. (거래 ${stats.txCount}건)`);
+            await loadLocalCounts();
         } catch (err) {
             setMessage('❌ 동기화 실패: ' + (err as Error).message);
         }
@@ -26,7 +41,7 @@ export default function SettingsPage() {
         try {
             const stats = await pullFromCloud();
             setMessage(`✅ 성공적으로 불러왔습니다: 거래 ${stats.txCount}건`);
-            setTxCount(stats.txCount);
+            await loadLocalCounts();
         } catch (err) {
             setMessage('❌ 불러오기 실패: ' + (err as Error).message);
         }
@@ -56,8 +71,7 @@ export default function SettingsPage() {
     };
 
     const handleCheckData = async () => {
-        const txs = await getAllTransactions();
-        setTxCount(txs.length);
+        await loadLocalCounts();
     };
 
     const handleClearAll = async () => {
@@ -66,7 +80,7 @@ export default function SettingsPage() {
         setLoading(true);
         await clearAllData();
         setMessage('✅ 모든 데이터가 삭제되었습니다.');
-        setTxCount(0);
+        await loadLocalCounts();
         setLoading(false);
     };
 
@@ -75,7 +89,7 @@ export default function SettingsPage() {
         setLoading(true);
         await clearTransactions();
         setMessage('✅ 거래 내역이 삭제되었습니다.');
-        setTxCount(0);
+        await loadLocalCounts();
         setLoading(false);
     };
 
@@ -107,7 +121,7 @@ export default function SettingsPage() {
                 const json = evt.target?.result as string;
                 const stats = await importBackup(json);
                 setMessage(`✅ 복원 완료: 거래 ${stats.txCount}건, 정산 ${stats.settleCount}건, 예산 ${stats.budgetCount}건`);
-                setTxCount(stats.txCount);
+                await loadLocalCounts();
             } catch {
                 setMessage('❌ 복원 실패: 유효하지 않은 파일');
             }
@@ -197,10 +211,10 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-4">
                     <button onClick={handleCheckData}
                         className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold rounded-xl transition-all">
-                        조회
+                        새로고침
                     </button>
-                    {txCount !== null && (
-                        <span className="text-sm text-zinc-400">거래 내역: <span className="text-white font-bold">{txCount.toLocaleString()}건</span></span>
+                    {localCounts && (
+                        <span className="text-sm text-zinc-400">거래 내역: <span className="text-white font-bold">{localCounts.transactions.toLocaleString()}건</span></span>
                     )}
                 </div>
             </div>
