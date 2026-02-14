@@ -261,7 +261,7 @@ function autoCategory(desc: string): string {
 
 // ─── Cloud Sync ─────────────────────────────────────────────────────────────
 
-export async function pushToCloud(): Promise<void> {
+export async function pushToCloud(): Promise<{ txCount: number; settleCount: number }> {
     const [txs, settlements, budgets, rules] = await Promise.all([
         getAllTransactions(),
         getAllSettlements(),
@@ -284,6 +284,11 @@ export async function pushToCloud(): Promise<void> {
     });
 
     if (!res.ok) throw new Error('Cloud sync failed');
+
+    return {
+        txCount: txs.length,
+        settleCount: settlements.length
+    };
 }
 
 export async function pullFromCloud(): Promise<{ txCount: number; settleCount: number }> {
@@ -293,6 +298,48 @@ export async function pullFromCloud(): Promise<{ txCount: number; settleCount: n
     const data = await res.json();
     const stats = await importBackup(JSON.stringify(data));
     return stats;
+}
+
+// ─── Auto Migration ─────────────────────────────────────────────────────────
+
+let migrationTriggered = false;
+
+async function autoMigrate() {
+    if (migrationTriggered) return;
+    migrationTriggered = true;
+
+    const oldDBNames = ['finance_db', 'finance_db_v2'];
+    for (const name of oldDBNames) {
+        try {
+            const db = await new Promise<IDBDatabase>((resolve, reject) => {
+                const req = indexedDB.open(name);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+
+            if (db.objectStoreNames.contains(TX_STORE)) {
+                console.log(`Migrating data from ${name}...`);
+                const txs = await new Promise<any[]>((resolve) => {
+                    const tx = db.transaction(TX_STORE, 'readonly');
+                    const req = tx.objectStore(TX_STORE).getAll();
+                    req.onsuccess = () => resolve(req.result);
+                });
+
+                if (txs.length > 0) {
+                    const currentDB = await openDB();
+                    const writeTx = currentDB.transaction(TX_STORE, 'readwrite');
+                    const store = writeTx.objectStore(TX_STORE);
+                    txs.forEach(t => store.put(t));
+                    await new Promise(r => writeTx.oncomplete = r);
+                    console.log(`Successfully migrated ${txs.length} transactions from ${name}`);
+                }
+            }
+            db.close();
+            // Optional: delete old DB after success? Safer to leave it for now.
+        } catch (e) {
+            // Ignore if DB doesn't exist or error
+        }
+    }
 }
 
 // ─── IndexedDB Helper ───────────────────────────────────────────────────────
@@ -331,6 +378,7 @@ function openDB(): Promise<IDBDatabase> {
 // ─── Transactions CRUD ──────────────────────────────────────────────────────
 
 export async function getAllTransactions(): Promise<BankTransaction[]> {
+    await autoMigrate();
     const db = await openDB();
     return new Promise((resolve, reject) => {
         const tx = db.transaction(TX_STORE, 'readonly');

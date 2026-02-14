@@ -12,8 +12,8 @@ export default function SettingsPage() {
         if (!confirm('현재 이 기기의 데이터를 클라우드 서버로 올립니다. 기존 서버 데이터는 덮어씌워집니다. 계속하시겠습니까?')) return;
         setLoading(true);
         try {
-            await pushToCloud();
-            setMessage('✅ 성공적으로 클라우드 서버에 저장되었습니다.');
+            const stats = await pushToCloud();
+            setMessage(`✅ 성공적으로 클라우드 서버에 저장되었습니다. (거래 ${stats.txCount}건)`);
         } catch (err) {
             setMessage('❌ 동기화 실패: ' + (err as Error).message);
         }
