@@ -7,6 +7,7 @@ export default function SettingsPage() {
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [localCounts, setLocalCounts] = useState<{ transactions: number; settlements: number } | null>(null);
+    const [redisStatus, setRedisStatus] = useState<boolean | null>(null);
 
     useEffect(() => {
         loadLocalCounts();
@@ -17,6 +18,13 @@ export default function SettingsPage() {
             const txs = await getAllTransactions();
             const settles = await getAllSettlements();
             setLocalCounts({ transactions: txs.length, settlements: settles.length });
+
+            // Also check Redis status from server
+            const res = await fetch('/api/groupware/erp/finance/sync');
+            if (res.ok) {
+                const data = await res.json();
+                setRedisStatus(data.redisStatus);
+            }
         } catch (err) {
             console.error('Failed to load local counts:', err);
         }
@@ -166,8 +174,11 @@ export default function SettingsPage() {
 
                 <div className="mb-4 p-3 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
                     <div className="flex flex-col gap-1">
-                        <div className="flex justify-between items-center text-[9px] text-zinc-600 font-mono">
-                            <span>Host: {typeof window !== 'undefined' ? window.location.host : '...'}</span>
+                        <div className="flex justify-between items-center text-[9px] font-mono">
+                            <span className="text-zinc-600">Host: {typeof window !== 'undefined' ? window.location.host : '...'}</span>
+                            <span className={redisStatus === true ? 'text-emerald-500' : 'text-red-500'}>
+                                {redisStatus === true ? '● Redis Connected' : redisStatus === false ? '○ Redis Not Configured' : '● Checking...'}
+                            </span>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-xs text-zinc-400">현재 이 기기의 로컬 데이터</span>

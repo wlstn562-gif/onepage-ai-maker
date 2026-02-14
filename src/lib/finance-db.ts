@@ -17,29 +17,41 @@ export interface FinanceData {
     updatedAt: string;
 }
 
-/**
- * REST API call to Upstash Redis
- */
 async function redisFetch(method: string, body?: any) {
     if (!REDIS_URL || !REDIS_TOKEN) return null;
 
-    const url = `${REDIS_URL.replace(/"/g, '')}/get/finance_data`;
-    const options: RequestInit = {
-        headers: { Authorization: `Bearer ${REDIS_TOKEN.replace(/"/g, '')}` }
-    };
+    const cleanUrl = REDIS_URL.replace(/"/g, '').trim();
+    const cleanToken = REDIS_TOKEN.replace(/"/g, '').trim();
 
     if (method === 'POST') {
-        const setUrl = `${REDIS_URL.replace(/"/g, '')}/set/finance_data`;
-        return fetch(setUrl, {
+        const setUrl = `${cleanUrl}/set/finance_data`;
+        const res = await fetch(setUrl, {
             method: 'POST',
-            headers: { Authorization: `Bearer ${REDIS_TOKEN.replace(/"/g, '')}` },
-            body: JSON.stringify(body)
+            headers: { Authorization: `Bearer ${cleanToken}` },
+            body: typeof body === 'string' ? body : JSON.stringify(body)
         });
+        return res.json();
     }
 
-    const res = await fetch(url, options);
+    const getUrl = `${cleanUrl}/get/finance_data`;
+    const res = await fetch(getUrl, {
+        headers: { Authorization: `Bearer ${cleanToken}` }
+    });
     const data = await res.json();
-    return data.result ? JSON.parse(data.result) : null;
+
+    if (data.result) {
+        try {
+            return JSON.parse(data.result);
+        } catch (e) {
+            console.error('[REDIS PARSE ERROR]', e, data.result);
+            return null;
+        }
+    }
+    return null;
+}
+
+export function isRedisConfigured(): boolean {
+    return !!(REDIS_URL && REDIS_TOKEN && REDIS_URL.length > 10);
 }
 
 export async function getFinanceData(): Promise<FinanceData> {
@@ -81,8 +93,8 @@ export async function saveFinanceData(data: FinanceData): Promise<void> {
 
     // 1. Save to Redis (Production Priority)
     try {
-        if (REDIS_URL && REDIS_TOKEN) {
-            await redisFetch('POST', JSON.stringify(payload));
+        if (isRedisConfigured()) {
+            await redisFetch('POST', payload);
             console.log(`[REDIS SAVE] Success: ${payload.transactions.length} txs`);
         }
     } catch (error) {
