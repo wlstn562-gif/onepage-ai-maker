@@ -13,6 +13,8 @@ export default function ShinhanImportPage() {
     const [saveStats, setSaveStats] = useState<{ inserted: number; skipped: number } | null>(null);
     const [fileName, setFileName] = useState('');
     const [accountName, setAccountName] = useState('086');
+    const [importType, setImportType] = useState<'excel' | 'text'>('excel');
+    const [smsText, setSmsText] = useState('');
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -47,6 +49,39 @@ export default function ShinhanImportPage() {
         reader.readAsArrayBuffer(file);
     };
 
+    const handleTextParse = async () => {
+        if (!smsText.trim()) return;
+        setLoading(true);
+        setMessage('');
+        setSaveStats(null);
+        try {
+            const res = await fetch('/api/groupware/erp/finance/parse-text', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: smsText, accountName })
+            });
+            const data = await res.json();
+            if (data.error) throw new Error(data.error);
+
+            const txs = data.transactions.map((t: any) => ({
+                ...t,
+                id: Math.random().toString(36).slice(2, 9),
+                createdAt: new Date().toISOString(),
+                account_name: t.account_name || accountName
+            }));
+
+            // AI Learning: Apply learned rules
+            const optimizedTxs = await applyClassificationRules(txs);
+
+            setParsedTxs(optimizedTxs);
+            setMessage(`✅ ${optimizedTxs.length}건의 거래가 텍스트에서 추출되었습니다.`);
+        } catch (err) {
+            setMessage(`❌ 텍스트 처리 오류: ${(err as Error).message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSave = async () => {
         if (parsedTxs.length === 0) return;
         setLoading(true);
@@ -78,8 +113,30 @@ export default function ShinhanImportPage() {
                 <p className="text-sm text-zinc-500 mt-1">신한은행 xlsx 파일에서 거래 내역을 자동으로 추출합니다</p>
             </div>
 
-            {/* Account Selector & Upload Area */}
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8 space-y-4">
+            {/* Tab Container */}
+            <div className="flex gap-2">
+                <button
+                    onClick={() => setImportType('excel')}
+                    className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${importType === 'excel'
+                        ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20'
+                        : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
+                        }`}
+                >
+                    Excel 파일 임포트
+                </button>
+                <button
+                    onClick={() => setImportType('text')}
+                    className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${importType === 'text'
+                        ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20'
+                        : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
+                        }`}
+                >
+                    SMS/텍스트 직접 붙여넣기
+                </button>
+            </div>
+
+            {/* Account Selector & Upload/Paste Area */}
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-8 space-y-6">
                 <div className="flex justify-center">
                     <select
                         value={accountName}
@@ -94,14 +151,35 @@ export default function ShinhanImportPage() {
                     </select>
                 </div>
 
-                <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-800/50 hover:border-yellow-500/30 transition-all group">
-                    <span className="material-symbols-outlined text-3xl text-zinc-600 group-hover:text-yellow-500 mb-2">upload_file</span>
-                    <span className="text-sm font-bold text-zinc-400 group-hover:text-white">
-                        {fileName || '신한은행 xlsx 파일 선택'}
-                    </span>
-                    <span className="text-[10px] text-zinc-600 mt-1">계좌거래내역 엑셀 파일</span>
-                    <input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} />
-                </label>
+                {importType === 'excel' ? (
+                    <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-zinc-700 rounded-xl cursor-pointer hover:bg-zinc-800/50 hover:border-yellow-500/30 transition-all group">
+                        <span className="material-symbols-outlined text-3xl text-zinc-600 group-hover:text-yellow-500 mb-2">upload_file</span>
+                        <span className="text-sm font-bold text-zinc-400 group-hover:text-white">
+                            {fileName || '신한은행 xlsx 파일 선택'}
+                        </span>
+                        <span className="text-[10px] text-zinc-600 mt-1">계좌거래내역 엑셀 파일</span>
+                        <input type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} />
+                    </label>
+                ) : (
+                    <div className="space-y-4">
+                        <textarea
+                            value={smsText}
+                            onChange={(e) => setSmsText(e.target.value)}
+                            placeholder="은행에서 온 SMS나 앱 알림 텍스트를 이곳에 붙여넣으세요.&#10;여러 건을 한꺼번에 붙여넣어도 AI가 자동으로 분류합니다."
+                            className="w-full h-48 bg-zinc-950/50 border border-zinc-800 rounded-xl p-4 text-sm text-zinc-300 outline-none focus:border-yellow-500 transition-all placeholder:text-zinc-600 resize-none"
+                        />
+                        <div className="flex justify-center">
+                            <button
+                                onClick={handleTextParse}
+                                disabled={loading || !smsText.trim()}
+                                className="px-8 py-3 bg-zinc-100 hover:bg-white text-black rounded-xl text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-30"
+                            >
+                                <span className="material-symbols-outlined text-[20px]">psychology</span>
+                                AI로 텍스트 분석하기
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Status Message */}

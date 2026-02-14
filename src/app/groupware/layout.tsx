@@ -91,9 +91,84 @@ export default function GroupwareLayout({
         menuItems.push({ name: '직원 관리 (Admin)', href: '/groupware/admin/employees', icon: 'admin_panel_settings' });
     }
 
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
     return (
-        <div className="flex h-screen bg-zinc-950 text-white">
-            {/* Sidebar */}
+        <div className="flex h-screen overflow-hidden bg-zinc-950 text-white">
+            {/* Mobile Sidebar Overlay */}
+            {isMobileMenuOpen && (
+                <div className="fixed inset-0 z-50 md:hidden">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                    />
+
+                    {/* Menu Content */}
+                    <aside className="absolute inset-y-0 left-0 w-72 bg-zinc-900 border-r border-zinc-800 flex flex-col shadow-2xl">
+                        <div className="p-6 flex items-center justify-between border-b border-zinc-800">
+                            <div>
+                                <h1 className="text-lg font-bold bg-gradient-to-r from-yellow-400 to-amber-600 bg-clip-text text-transparent">
+                                    GROUPWARE
+                                </h1>
+                                <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-0.5">Mobile Menu</p>
+                            </div>
+                            <button
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="p-2 text-zinc-500 hover:text-white transition-colors"
+                            >
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+
+                        <nav className="flex-1 px-4 space-y-1 mt-4 overflow-y-auto pb-10 scrollbar-hide">
+                            {menuItems.map((item, idx) => {
+                                if ((item as any).divider) {
+                                    return (
+                                        <div key={idx} className="pt-4 pb-1 px-4">
+                                            <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">{item.name.replace(/─/g, '').trim()}</span>
+                                        </div>
+                                    );
+                                }
+                                const isActive = pathname === item.href;
+                                return (
+                                    <Link
+                                        key={idx}
+                                        href={item.href}
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive
+                                            ? 'bg-yellow-500/10 text-yellow-500'
+                                            : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                                            }`}
+                                    >
+                                        <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                                        {item.name}
+                                    </Link>
+                                );
+                            })}
+                        </nav>
+
+                        <div className="p-4 border-t border-zinc-800 bg-zinc-900/80">
+                            <div className="flex items-center gap-3 px-2 py-2">
+                                <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-[10px] font-bold text-zinc-400">
+                                    {role === 'admin' ? 'ADM' : 'EMP'}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-white truncate">{userName}</p>
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="p-2 text-zinc-500 hover:text-red-400 transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">logout</span>
+                                </button>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            )}
+
+            {/* Desktop Sidebar */}
             <aside className="w-64 border-r border-zinc-800 bg-zinc-900/50 hidden md:flex flex-col">
                 <div className="p-6">
                     <Link href="/photo" className="block hover:opacity-80 transition-opacity">
@@ -104,7 +179,7 @@ export default function GroupwareLayout({
                     </Link>
                 </div>
 
-                <nav className="flex-1 px-4 space-y-1 mt-4">
+                <nav className="flex-1 px-4 space-y-1 mt-4 overflow-y-auto scrollbar-thin scrollbar-track-zinc-900 scrollbar-thumb-zinc-700">
                     {menuItems.map((item, idx) => {
                         if ((item as any).divider) {
                             return (
@@ -116,7 +191,7 @@ export default function GroupwareLayout({
                         const isActive = pathname === item.href;
                         return (
                             <Link
-                                key={item.href}
+                                key={idx}
                                 href={item.href}
                                 className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
                                     ? 'bg-yellow-500/10 text-yellow-500'
@@ -151,12 +226,18 @@ export default function GroupwareLayout({
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-auto">
-                <header className="flex h-16 items-center justify-between border-b border-zinc-800 bg-zinc-900/50 px-6 backdrop-blur md:hidden">
-                    <span className="text-lg font-bold">Groupware</span>
-                    {/* Mobile menu button could go here */}
+            <main className="flex-1 overflow-auto flex flex-col">
+                <header className="flex h-16 shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-900/50 px-6 backdrop-blur md:hidden">
+                    <button
+                        onClick={() => setIsMobileMenuOpen(true)}
+                        className="p-2 -ml-2 text-zinc-400 hover:text-white transition-colors"
+                    >
+                        <span className="material-symbols-outlined text-[28px]">menu</span>
+                    </button>
+                    <span className="text-lg font-bold bg-gradient-to-r from-yellow-400 to-amber-600 bg-clip-text text-transparent">YEONHEE</span>
+                    <div className="w-10"></div> {/* Symmetry spacer */}
                 </header>
-                <div className="p-8 max-w-7xl mx-auto">
+                <div className="p-8 max-w-7xl mx-auto w-full">
                     {children}
                 </div>
             </main>

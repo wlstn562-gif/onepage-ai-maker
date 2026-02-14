@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 const FranchiseSection: React.FC = () => {
     return (
-        <section id="franchise" className="mt-40 bg-black rounded-[60px] overflow-hidden relative py-24 md:py-32">
+        <section id="franchise" className="mt-40 bg-black rounded-t-[60px] overflow-hidden relative py-24 md:py-32">
             <div className="relative z-10 w-full max-w-6xl mx-auto px-6 md:px-20 text-center">
                 <div className="flex flex-col items-center gap-10 mb-20">
                     {/* Floating Icon */}
