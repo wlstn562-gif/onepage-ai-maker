@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { clearAllData, clearTransactions, exportAllData, importBackup, getAllTransactions, restoreCategoriesFromBackup, pushToCloud, pullFromCloud, getAllSettlements } from '@/lib/finance-store';
+import { clearAllData, clearTransactions, exportAllData, importBackup, getAllTransactions, restoreCategoriesFromBackup, pushToCloud, pullFromCloud, getAllSettlements, isAutoSyncEnabled, setAutoSyncEnabled } from '@/lib/finance-store';
 
 export default function SettingsPage() {
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [localCounts, setLocalCounts] = useState<{ transactions: number; settlements: number } | null>(null);
     const [redisStatus, setRedisStatus] = useState<boolean | null>(null);
+    const [autoSync, setAutoSync] = useState(false);
 
     useEffect(() => {
         loadLocalCounts();
+        setAutoSync(isAutoSyncEnabled());
     }, []);
 
     const loadLocalCounts = async () => {
@@ -54,6 +56,16 @@ export default function SettingsPage() {
             setMessage('❌ 불러오기 실패: ' + (err as Error).message);
         }
         setLoading(false);
+    };
+
+    const handleToggleAutoSync = (enabled: boolean) => {
+        setAutoSync(enabled);
+        setAutoSyncEnabled(enabled);
+        if (enabled) {
+            setMessage('✅ 자동 동기화가 활성화되었습니다.');
+        } else {
+            setMessage('ℹ️ 자동 동기화가 비활성화되었습니다.');
+        }
     };
 
     // ... (existing handlers)
@@ -204,6 +216,24 @@ export default function SettingsPage() {
                     </button>
                 </div>
 
+                <div className="mt-4 flex items-center justify-between p-4 bg-zinc-900/80 border border-zinc-800 rounded-xl">
+                    <div className="flex items-center gap-3">
+                        <span className={`material-symbols-outlined ${autoSync ? 'text-yellow-500' : 'text-zinc-600'}`}>
+                            {autoSync ? 'sync' : 'sync_disabled'}
+                        </span>
+                        <div>
+                            <div className="text-xs font-bold text-white">자동 동기화</div>
+                            <div className="text-[10px] text-zinc-500">데이터 변경 시 서버에 자동 저장 및 앱 실행 시 자동 로드</div>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => handleToggleAutoSync(!autoSync)}
+                        className={`w-10 h-5 rounded-full transition-all relative ${autoSync ? 'bg-yellow-500' : 'bg-zinc-700'}`}
+                    >
+                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${autoSync ? 'left-6' : 'left-1'}`} />
+                    </button>
+                </div>
+
                 <div className="mt-4 p-3 bg-black/30 rounded-lg">
                     <p className="text-[10px] text-zinc-500 leading-normal">
                         <span className="text-yellow-500 font-bold">💡 Tip:</span> 폰에서 정리를 마친 후 <strong>[서버로 올리기]</strong>를 누르세요. <br />
@@ -299,6 +329,6 @@ export default function SettingsPage() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

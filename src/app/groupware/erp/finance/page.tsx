@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { getAllTransactions, BankTransaction, formatCurrency, getMonthlySummary } from '@/lib/finance-store';
+import { getAllTransactions, BankTransaction, formatCurrency, getMonthlySummary, autoPullIfNewer } from '@/lib/finance-store';
 
 interface QuickStat {
     label: string;
@@ -19,38 +19,43 @@ export default function FinanceDashboard() {
     const [lastBalance, setLastBalance] = useState(0);
     const [recentTxs, setRecentTxs] = useState<BankTransaction[]>([]);
 
+    const loadStats = async () => {
+        // Auto-pull from cloud first
+        const wasUpdated = await autoPullIfNewer();
+
+        const all = await getAllTransactions();
+        setTxCount(all.length);
+
+        // Today
+        const today = new Date().toISOString().slice(0, 10);
+        const todayTxs = all.filter(t => t.date === today);
+        setTodayStats({
+            deposit: todayTxs.reduce((s, t) => s + t.deposit, 0),
+            withdrawal: todayTxs.reduce((s, t) => s + t.withdrawal, 0),
+        });
+
+        // This month
+        const ym = today.slice(0, 7);
+        const summary = await getMonthlySummary(ym);
+        setMonthStats({
+            deposit: summary.totalDeposit,
+            withdrawal: summary.totalWithdrawal,
+            net: summary.netAmount,
+            count: summary.txCount,
+        });
+
+        // Last balance
+        const sorted = [...all].sort((a, b) => (a.date + a.id).localeCompare(b.date + b.id));
+        if (sorted.length > 0) {
+            setLastBalance(sorted[sorted.length - 1].balance);
+        }
+
+        // Recent 8
+        setRecentTxs(sorted.slice(-8).reverse());
+    };
+
     useEffect(() => {
-        (async () => {
-            const all = await getAllTransactions();
-            setTxCount(all.length);
-
-            // Today
-            const today = new Date().toISOString().slice(0, 10);
-            const todayTxs = all.filter(t => t.date === today);
-            setTodayStats({
-                deposit: todayTxs.reduce((s, t) => s + t.deposit, 0),
-                withdrawal: todayTxs.reduce((s, t) => s + t.withdrawal, 0),
-            });
-
-            // This month
-            const ym = today.slice(0, 7);
-            const summary = await getMonthlySummary(ym);
-            setMonthStats({
-                deposit: summary.totalDeposit,
-                withdrawal: summary.totalWithdrawal,
-                net: summary.netAmount,
-                count: summary.txCount,
-            });
-
-            // Last balance
-            const sorted = [...all].sort((a, b) => (a.date + a.id).localeCompare(b.date + b.id));
-            if (sorted.length > 0) {
-                setLastBalance(sorted[sorted.length - 1].balance);
-            }
-
-            // Recent 8
-            setRecentTxs(sorted.slice(-8).reverse());
-        })();
+        loadStats();
     }, []);
 
     const today = new Date().toISOString().slice(0, 10);

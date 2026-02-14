@@ -291,13 +291,69 @@ export async function pushToCloud(): Promise<{ txCount: number; settleCount: num
     };
 }
 
-export async function pullFromCloud(): Promise<{ txCount: number; settleCount: number }> {
+export async function pullFromCloud(): Promise<{ txCount: number; settleCount: number; budgetCount: number; ruleCount: number }> {
     const res = await fetch('/api/groupware/erp/finance/sync');
     if (!res.ok) throw new Error('Failed to fetch from cloud');
 
     const data = await res.json();
     const stats = await importBackup(JSON.stringify(data));
     return stats;
+}
+
+// --- Auto Sync Logic ---
+
+const AUTO_SYNC_KEY = 'finance_auto_sync_enabled';
+let autoPushTimer: NodeJS.Timeout | null = null;
+
+export function isAutoSyncEnabled(): boolean {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem(AUTO_SYNC_KEY) === 'true';
+}
+
+export function setAutoSyncEnabled(enabled: boolean) {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(AUTO_SYNC_KEY, String(enabled));
+}
+
+export function triggerAutoPush() {
+    if (!isAutoSyncEnabled()) return;
+
+    if (autoPushTimer) clearTimeout(autoPushTimer);
+    autoPushTimer = setTimeout(async () => {
+        try {
+            console.log('[AUTO SYNC] Pushing changes...');
+            await pushToCloud();
+        } catch (e) {
+            console.error('[AUTO SYNC] Auto-push failed:', e);
+        }
+    }, 2000);
+}
+
+export async function autoPullIfNewer(): Promise<boolean> {
+    if (!isAutoSyncEnabled()) return false;
+
+    try {
+        const res = await fetch('/api/groupware/erp/finance/sync');
+        if (!res.ok) return false;
+
+        const serverData = await res.json();
+        const serverUpdatedAt = serverData.updatedAt;
+        if (!serverUpdatedAt) return false;
+
+        // Get local updatedAt from anywhere we store it, or just use the last known sync
+        // For simplicity, we can just compare transactions count or always pull on load if newer
+        const currentData = await exportAllData();
+        const localData = JSON.parse(currentData);
+
+        if (serverUpdatedAt > (localData.updatedAt || '')) {
+            console.log('[AUTO SYNC] Server data is newer. Pulling...');
+            await importBackup(JSON.stringify(serverData));
+            return true;
+        }
+    } catch (e) {
+        console.error('[AUTO SYNC] Auto-pull failed:', e);
+    }
+    return false;
 }
 
 // ─── Auto Migration ─────────────────────────────────────────────────────────
@@ -453,7 +509,10 @@ export async function saveTransactions(txs: BankTransaction[], skipDuplicates = 
             inserted++;
         }
 
-        tx.oncomplete = () => resolve({ inserted, skipped });
+        tx.oncomplete = () => {
+            triggerAutoPush();
+            resolve({ inserted, skipped });
+        };
         tx.onerror = () => reject(tx.error);
     });
 }
@@ -463,7 +522,10 @@ export async function updateTransaction(tx: BankTransaction): Promise<void> {
     return new Promise((resolve, reject) => {
         const t = db.transaction(TX_STORE, 'readwrite');
         t.objectStore(TX_STORE).put(tx);
-        t.oncomplete = () => resolve();
+        t.oncomplete = () => {
+            triggerAutoPush();
+            resolve();
+        };
         t.onerror = () => reject(t.error);
     });
 }
@@ -473,7 +535,10 @@ export async function deleteTransaction(id: string): Promise<void> {
     return new Promise((resolve, reject) => {
         const t = db.transaction(TX_STORE, 'readwrite');
         t.objectStore(TX_STORE).delete(id);
-        t.oncomplete = () => resolve();
+        t.oncomplete = () => {
+            triggerAutoPush();
+            resolve();
+        };
         t.onerror = () => reject(t.error);
     });
 }
@@ -529,7 +594,10 @@ export async function saveSettlement(s: Settlement): Promise<void> {
     return new Promise((resolve, reject) => {
         const tx = db.transaction(SETTLE_STORE, 'readwrite');
         tx.objectStore(SETTLE_STORE).put(s);
-        tx.oncomplete = () => resolve();
+        tx.oncomplete = () => {
+            triggerAutoPush();
+            resolve();
+        };
         tx.onerror = () => reject(tx.error);
     });
 }
@@ -539,7 +607,10 @@ export async function deleteSettlement(id: string): Promise<void> {
     return new Promise((resolve, reject) => {
         const tx = db.transaction(SETTLE_STORE, 'readwrite');
         tx.objectStore(SETTLE_STORE).delete(id);
-        tx.oncomplete = () => resolve();
+        tx.oncomplete = () => {
+            triggerAutoPush();
+            resolve();
+        };
         tx.onerror = () => reject(tx.error);
     });
 }
@@ -566,7 +637,10 @@ export async function saveBudget(b: BudgetItem): Promise<void> {
     return new Promise((resolve, reject) => {
         const tx = db.transaction(BUDGET_STORE, 'readwrite');
         tx.objectStore(BUDGET_STORE).put(b);
-        tx.oncomplete = () => resolve();
+        tx.oncomplete = () => {
+            triggerAutoPush();
+            resolve();
+        };
         tx.onerror = () => reject(tx.error);
     });
 }
@@ -577,7 +651,10 @@ export async function saveBudgets(items: BudgetItem[]): Promise<void> {
         const tx = db.transaction(BUDGET_STORE, 'readwrite');
         const store = tx.objectStore(BUDGET_STORE);
         for (const b of items) store.put(b);
-        tx.oncomplete = () => resolve();
+        tx.oncomplete = () => {
+            triggerAutoPush();
+            resolve();
+        };
         tx.onerror = () => reject(tx.error);
     });
 }
@@ -591,7 +668,10 @@ export async function clearAllData(): Promise<void> {
         tx.objectStore(TX_STORE).clear();
         tx.objectStore(SETTLE_STORE).clear();
         tx.objectStore(BUDGET_STORE).clear();
-        tx.oncomplete = () => resolve();
+        tx.oncomplete = () => {
+            triggerAutoPush();
+            resolve();
+        };
         tx.onerror = () => reject(tx.error);
     });
 }
@@ -601,7 +681,10 @@ export async function clearTransactions(): Promise<void> {
     return new Promise((resolve, reject) => {
         const tx = db.transaction(TX_STORE, 'readwrite');
         tx.objectStore(TX_STORE).clear();
-        tx.oncomplete = () => resolve();
+        tx.oncomplete = () => {
+            triggerAutoPush();
+            resolve();
+        };
         tx.onerror = () => reject(tx.error);
     });
 }
@@ -668,7 +751,10 @@ export async function addCategoryRule(keyword: string, category: string): Promis
     return new Promise((resolve, reject) => {
         const tx = db.transaction(RULES_STORE, 'readwrite');
         tx.objectStore(RULES_STORE).put(rule);
-        tx.oncomplete = () => resolve();
+        tx.oncomplete = () => {
+            triggerAutoPush();
+            resolve();
+        };
         tx.onerror = () => reject(tx.error);
     });
 }
