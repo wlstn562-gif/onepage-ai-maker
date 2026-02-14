@@ -259,6 +259,42 @@ function autoCategory(desc: string): string {
     return '기타운영비';
 }
 
+// ─── Cloud Sync ─────────────────────────────────────────────────────────────
+
+export async function pushToCloud(): Promise<void> {
+    const [txs, settlements, budgets, rules] = await Promise.all([
+        getAllTransactions(),
+        getAllSettlements(),
+        getAllBudgets(),
+        getAllRules(),
+    ]);
+
+    const payload = {
+        transactions: txs,
+        settlements,
+        budgets,
+        rules,
+        updatedAt: new Date().toISOString()
+    };
+
+    const res = await fetch('/api/groupware/erp/finance/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) throw new Error('Cloud sync failed');
+}
+
+export async function pullFromCloud(): Promise<{ txCount: number; settleCount: number }> {
+    const res = await fetch('/api/groupware/erp/finance/sync');
+    if (!res.ok) throw new Error('Failed to fetch from cloud');
+
+    const data = await res.json();
+    const stats = await importBackup(JSON.stringify(data));
+    return stats;
+}
+
 // ─── IndexedDB Helper ───────────────────────────────────────────────────────
 
 function openDB(): Promise<IDBDatabase> {

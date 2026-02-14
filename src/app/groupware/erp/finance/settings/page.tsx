@@ -1,12 +1,37 @@
 'use client';
 
 import { useState } from 'react';
-import { clearAllData, clearTransactions, exportAllData, importBackup, getAllTransactions, restoreCategoriesFromBackup } from '@/lib/finance-store';
+import { clearAllData, clearTransactions, exportAllData, importBackup, getAllTransactions, restoreCategoriesFromBackup, pushToCloud, pullFromCloud } from '@/lib/finance-store';
 
 export default function SettingsPage() {
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [txCount, setTxCount] = useState<number | null>(null);
+
+    const handlePush = async () => {
+        if (!confirm('현재 이 기기의 데이터를 클라우드 서버로 올립니다. 기존 서버 데이터는 덮어씌워집니다. 계속하시겠습니까?')) return;
+        setLoading(true);
+        try {
+            await pushToCloud();
+            setMessage('✅ 성공적으로 클라우드 서버에 저장되었습니다.');
+        } catch (err) {
+            setMessage('❌ 동기화 실패: ' + (err as Error).message);
+        }
+        setLoading(false);
+    };
+
+    const handlePull = async () => {
+        if (!confirm('클라우드 서버의 데이터를 이 기기로 불러옵니다. 현재 기기의 데이터는 사라질 수 있습니다. 계속하시겠습니까?')) return;
+        setLoading(true);
+        try {
+            const stats = await pullFromCloud();
+            setMessage(`✅ 성공적으로 불러왔습니다: 거래 ${stats.txCount}건`);
+            setTxCount(stats.txCount);
+        } catch (err) {
+            setMessage('❌ 불러오기 실패: ' + (err as Error).message);
+        }
+        setLoading(false);
+    };
 
     // ... (existing handlers)
 
@@ -115,7 +140,38 @@ export default function SettingsPage() {
                 </div>
             )}
 
-            {/* Smart Restore */}
+            {/* Cloud Sync */}
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-6 shadow-xl shadow-yellow-500/5">
+                <div className="flex items-center gap-3 mb-4">
+                    <span className="material-symbols-outlined text-yellow-500 text-2xl">cloud_sync</span>
+                    <div>
+                        <h3 className="text-sm font-bold text-white">클라우드 동기화 (PC ↔ 모바일)</h3>
+                        <p className="text-[10px] text-zinc-500">다른 기기에서 이어서 작업하려면 반드시 동기화가 필요합니다.</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <button onClick={handlePush} disabled={loading}
+                        className="flex flex-col items-center justify-center gap-2 p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-yellow-500/50 transition-all group">
+                        <span className="material-symbols-outlined text-zinc-600 group-hover:text-yellow-500">cloud_upload</span>
+                        <div className="text-xs font-bold text-zinc-300">서버로 올리기</div>
+                        <div className="text-[9px] text-zinc-600">이 폰 &rarr; 모든 기기</div>
+                    </button>
+                    <button onClick={handlePull} disabled={loading}
+                        className="flex flex-col items-center justify-center gap-2 p-4 bg-zinc-900 border border-zinc-800 rounded-xl hover:border-yellow-500/50 transition-all group">
+                        <span className="material-symbols-outlined text-zinc-600 group-hover:text-yellow-500">cloud_download</span>
+                        <div className="text-xs font-bold text-zinc-300">서버에서 받기</div>
+                        <div className="text-[9px] text-zinc-600">서버 &rarr; 이 기기</div>
+                    </button>
+                </div>
+
+                <div className="mt-4 p-3 bg-black/30 rounded-lg">
+                    <p className="text-[10px] text-zinc-500 leading-normal">
+                        <span className="text-yellow-500 font-bold">💡 Tip:</span> 폰에서 정리를 마친 후 <strong>[서버로 올리기]</strong>를 누르세요. <br />
+                        그 다음 컴퓨터 브라우저에서 <strong>[서버에서 받기]</strong>를 누르면 똑같이 보입니다.
+                    </p>
+                </div>
+            </div>
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-4">
                     <span className="material-symbols-outlined text-[18px] text-blue-500">model_training</span> 분류 복원 (Smart Restore)
