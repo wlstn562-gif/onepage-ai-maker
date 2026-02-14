@@ -52,7 +52,10 @@ export function saveFinanceData(data: FinanceData): void {
             ...data,
             updatedAt: new Date().toISOString()
         };
+        console.log(`[DB SAVE] Writing to: ${financePath}`);
+        console.log(`[DB SAVE] process.cwd(): ${process.cwd()}`);
         fs.writeFileSync(financePath, JSON.stringify(payload, null, 2), 'utf-8');
+        console.log(`[DB SAVE] Write complete. Size: ${JSON.stringify(payload).length} bytes`);
     } catch (error) {
         console.error('Error saving finance data:', error);
     }

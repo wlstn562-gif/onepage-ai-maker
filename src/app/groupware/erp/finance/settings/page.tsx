@@ -159,8 +159,22 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-3 mb-4">
                     <span className="material-symbols-outlined text-yellow-500 text-2xl">cloud_sync</span>
                     <div>
-                        <h3 className="text-sm font-bold text-white">클라우드 동기화 (PC ↔ 모바일)</h3>
+                        <h3 className="text-sm font-bold text-white">클라우드 동기화 (PC &rarr; 모바일)</h3>
                         <p className="text-[10px] text-zinc-500">다른 기기에서 이어서 작업하려면 반드시 동기화가 필요합니다.</p>
+                    </div>
+                </div>
+
+                <div className="mb-4 p-3 bg-zinc-800/50 rounded-xl border border-zinc-700/50">
+                    <div className="flex flex-col gap-1">
+                        <div className="flex justify-between items-center text-[9px] text-zinc-600 font-mono">
+                            <span>Host: {typeof window !== 'undefined' ? window.location.host : '...'}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-xs text-zinc-400">현재 이 기기의 로컬 데이터</span>
+                            <div className="flex gap-3">
+                                <span className="text-[10px] font-mono text-yellow-500">거래: {localCounts?.transactions ?? '...'}건</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
