@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { BankTransaction, parseShinhanXlsx, saveTransactions, formatCurrency, applyClassificationRules } from '@/lib/finance-store';
+import { BankTransaction, parseShinhanXlsx, saveTransactions, formatCurrency, applyClassificationRules, pushToCloud, pullFromCloud } from '@/lib/finance-store';
 
 export default function ShinhanImportPage() {
     // ... (state remains same)
@@ -99,6 +99,22 @@ export default function ShinhanImportPage() {
         }
     };
 
+    const handleSync = async () => {
+        setLoading(true);
+        setMessage('🔄 클라우드와 동기화 중...');
+        try {
+            // Push local changes first
+            await pushToCloud();
+            // Pull latest from cloud
+            const stats = await pullFromCloud();
+            setMessage(`✅ 동기화 완료! (가져온 데이터: ${stats.txCount}건)`);
+        } catch (err) {
+            setMessage('❌ 동기화 실패: ' + (err as Error).message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Summary stats
     const totalDeposit = parsedTxs.reduce((s, t) => s + t.deposit, 0);
     const totalWithdrawal = parsedTxs.reduce((s, t) => s + t.withdrawal, 0);
@@ -108,9 +124,20 @@ export default function ShinhanImportPage() {
 
     return (
         <div className="space-y-6 max-w-5xl">
-            <div>
-                <h2 className="text-2xl font-bold text-white">계좌내역 임포트</h2>
-                <p className="text-sm text-zinc-500 mt-1">신한은행 xlsx 파일에서 거래 내역을 자동으로 추출합니다</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold text-white">계좌내역 임포트</h2>
+                    <p className="text-sm text-zinc-500 mt-1">신한은행 xlsx 파일에서 거래 내역을 자동으로 추출합니다</p>
+                </div>
+                <button
+                    onClick={handleSync}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-yellow-500 rounded-xl text-sm font-bold transition-all border border-zinc-700 hover:border-yellow-500/50"
+                    title="클라우드 데이터와 양방향 동기화"
+                >
+                    <span className={`material-symbols-outlined text-[20px] ${loading ? 'animate-spin' : ''}`}>sync</span>
+                    동기화
+                </button>
             </div>
 
             {/* Tab Container */}
