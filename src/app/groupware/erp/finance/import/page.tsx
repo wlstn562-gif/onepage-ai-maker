@@ -125,13 +125,16 @@ export default function ShinhanImportPage() {
 
     const handleSync = async () => {
         setLoading(true);
-        setMessage('🔄 클라우드와 동기화 중...');
+        setMessage('🔄 클라우드 데이터 가져오는 중 (1/2)...');
         try {
-            // Push local changes first
-            await pushToCloud();
-            // Pull latest from cloud
-            const stats = await pullFromCloud();
-            setMessage(`✅ 동기화 완료! (가져온 데이터: ${stats.txCount}건)`);
+            // 1. Pull latest from cloud first to merge locally
+            const pullStats = await pullFromCloud();
+
+            setMessage('🔄 로컬 변경사항 업로드 중 (2/2)...');
+            // 2. Push merged state back to cloud
+            const pushStats = await pushToCloud();
+
+            setMessage(`✅ 동기화 완료! (가져온 데이터: ${pullStats.txCount}건)`);
             await fetchStatus();
         } catch (err) {
             setMessage('❌ 동기화 실패: ' + (err as Error).message);
