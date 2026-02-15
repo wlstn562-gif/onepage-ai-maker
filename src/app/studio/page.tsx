@@ -253,7 +253,13 @@ export default function StudioPage() {
                                         return (
                                             <button
                                                 key={team.id}
-                                                onClick={() => setActiveTeamId(team.id)}
+                                                onClick={() => {
+                                                    if (team.href) {
+                                                        window.location.href = team.href;
+                                                    } else {
+                                                        setActiveTeamId(team.id);
+                                                    }
+                                                }}
                                                 className={`group relative flex flex-col items-start justify-between rounded-xl border p-6 text-left transition-all duration-200
                         ${isActive
                                                         ? `border-${team.color.split('-')[1]}-500 bg-zinc-900 ring-1 ring-${team.color.split('-')[1]}-500`

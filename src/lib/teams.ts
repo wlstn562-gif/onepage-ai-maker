@@ -8,6 +8,7 @@ export interface Team {
     color: string;
     bgColor: string;
     borderColor: string;
+    href?: string;
 }
 
 export const TEAMS: Team[] = [
@@ -100,5 +101,15 @@ export const TEAMS: Team[] = [
         color: 'text-indigo-400',
         bgColor: 'bg-indigo-500/10',
         borderColor: 'hover:ring-indigo-500/50'
+    },
+    {
+        id: 'executive',
+        name: 'Executive AI',
+        description: 'CEO 전용 의사결정 대시보드 및 기업 전략 지표 관리 스튜디오.',
+        icon: Target,
+        color: 'text-yellow-400',
+        bgColor: 'bg-yellow-500/10',
+        borderColor: 'hover:ring-yellow-500/50',
+        href: '/admin/ceo?key=edsence_ceo'
     }
 ];
