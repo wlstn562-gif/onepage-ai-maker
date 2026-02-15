@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { BankTransaction, parseShinhanXlsx, saveTransactions, formatCurrency, applyClassificationRules, pushToCloud, pullFromCloud } from '@/lib/finance-store';
+import { BankTransaction, parseShinhanXlsx, saveTransactions, formatCurrency, applyClassificationRules, pushToCloud, pullFromCloud, getAllTransactions } from '@/lib/finance-store';
+import { useEffect } from 'react';
 
 export default function ShinhanImportPage() {
     // ... (state remains same)
@@ -15,6 +16,29 @@ export default function ShinhanImportPage() {
     const [accountName, setAccountName] = useState('086');
     const [importType, setImportType] = useState<'excel' | 'text'>('excel');
     const [smsText, setSmsText] = useState('');
+    const [redisStatus, setRedisStatus] = useState<boolean | null>(null);
+    const [localTxCount, setLocalTxCount] = useState<number | null>(null);
+
+    useEffect(() => {
+        fetchStatus();
+    }, []);
+
+    const fetchStatus = async () => {
+        try {
+            // Local count
+            const txs = await getAllTransactions();
+            setLocalTxCount(txs.length);
+
+            // Redis status
+            const res = await fetch('/api/groupware/erp/finance/sync');
+            if (res.ok) {
+                const data = await res.json();
+                setRedisStatus(data.redisStatus);
+            }
+        } catch (err) {
+            console.error('Failed to fetch finance status:', err);
+        }
+    };
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -108,6 +132,7 @@ export default function ShinhanImportPage() {
             // Pull latest from cloud
             const stats = await pullFromCloud();
             setMessage(`✅ 동기화 완료! (가져온 데이터: ${stats.txCount}건)`);
+            await fetchStatus();
         } catch (err) {
             setMessage('❌ 동기화 실패: ' + (err as Error).message);
         } finally {
@@ -129,15 +154,30 @@ export default function ShinhanImportPage() {
                     <h2 className="text-2xl font-bold text-white">계좌내역 임포트</h2>
                     <p className="text-sm text-zinc-500 mt-1">신한은행 xlsx 파일에서 거래 내역을 자동으로 추출합니다</p>
                 </div>
-                <button
-                    onClick={handleSync}
-                    disabled={loading}
-                    className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-yellow-500 rounded-xl text-sm font-bold transition-all border border-zinc-700 hover:border-yellow-500/50"
-                    title="클라우드 데이터와 양방향 동기화"
-                >
-                    <span className={`material-symbols-outlined text-[20px] ${loading ? 'animate-spin' : ''}`}>sync</span>
-                    동기화
-                </button>
+                <div className="flex items-center gap-4">
+                    <div className="flex flex-col items-end gap-1">
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-zinc-900 border border-zinc-800 rounded-md">
+                            <div className={`w-1.5 h-1.5 rounded-full ${redisStatus === true ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500'}`} />
+                            <span className={`text-[10px] font-bold ${redisStatus === true ? 'text-emerald-500' : 'text-zinc-500'}`}>
+                                {redisStatus === true ? 'Redis 온라인' : 'Redis 연결안됨'}
+                            </span>
+                        </div>
+                        {localTxCount !== null && (
+                            <span className="text-[10px] font-mono text-zinc-500">
+                                전체: <span className="text-yellow-500 font-bold">{localTxCount.toLocaleString()}</span>건
+                            </span>
+                        )}
+                    </div>
+                    <button
+                        onClick={handleSync}
+                        disabled={loading}
+                        className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-yellow-500 rounded-xl text-sm font-bold transition-all border border-zinc-700 hover:border-yellow-500/50"
+                        title="클라우드 데이터와 양방향 동기화"
+                    >
+                        <span className={`material-symbols-outlined text-[20px] ${loading ? 'animate-spin' : ''}`}>sync</span>
+                        동기화
+                    </button>
+                </div>
             </div>
 
             {/* Tab Container */}
